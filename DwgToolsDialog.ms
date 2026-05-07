@@ -97,16 +97,17 @@ function dwgToolsDialog Dialog: width: =
 
 	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
 
-	for key in LAYER_NAMES_KEYWORDS.keys do format "key: % \nVALUE: %\n\n" key LAYER_NAMES_KEYWORDS[key]
+	--for key in LAYER_NAMES_KEYWORDS.keys do format "key: % \nVALUE: %\n\n" key LAYER_NAMES_KEYWORDS[key]
 
 	/* ROLLOUTS */
-	_Rollouts	 = Dialog.Rollouts()
+	_Rollouts	 = Dialog.Rollouts height:1024
 	
 	
 	/* RETURN DIALOG */ 
 	--Dialog --return
 	--Dialog.create height:undefined --width:dialog_width
-	Dialog.create height:1280
+	--Dialog.create height:1280
+	Dialog.create height:1600
 	
 	/*------------------------------------------------------------------------------
 		TREE VIEW

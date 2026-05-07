@@ -1,6 +1,8 @@
 clearListener(); print("Cleared in:\n"+getSourceFileName())
 
 global LAYER_MANAGER_APP
+global LAYER_NAMES_KEYWORDS
+global tvRollout
 
 /* UI FRAMEWORK */
 filein( getFilenamePath(getSourceFileName()) + "/../MAXSCRIPT-UI-framework/Lib/Dialog/Dialog.ms" )	--"./../MAXSCRIPT-UI-framework/Lib/Dialog/Dialog.ms"

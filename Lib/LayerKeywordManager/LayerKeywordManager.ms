@@ -74,7 +74,7 @@ struct LayerKeywordManager_v
 		--for key in keywords.keys do format "key: % \nVALUE: %\n\n" key keywords[key]
 		--for key in keywords.keys do format "key: %\n" key
 		
-		format "KEYWORDS: \n\n%\n\n" keywords
+		--format "KEYWORDS: \n\n%\n\n" keywords
 		keywords --return
 	),
 	
