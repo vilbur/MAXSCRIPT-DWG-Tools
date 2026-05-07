@@ -1,4 +1,7 @@
 /** Load content and create dialog
+  
+  
+   @return Dialog_v
  */
 function loadContentAndCreateDialog =
 (
@@ -12,8 +15,5 @@ function loadContentAndCreateDialog =
 	
 	ContentLoader.Dialog.title = "DwgTools"
 
-	/* CREATE UI */
-	ContentLoader.create() --width:512
-	
-	
+	ContentLoader.Dialog --return
 )
