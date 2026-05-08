@@ -1,8 +1,10 @@
 clearListener(); print("Cleared in:\n"+getSourceFileName())
 
+global DIALOG_dwgtools
+global tv_rollout
+
 global LAYER_MANAGER_APP
 global LAYER_NAMES_KEYWORDS
-global tvRollout
 
 /* UI FRAMEWORK */
 filein( getFilenamePath(getSourceFileName()) + "/../MAXSCRIPT-UI-framework/Lib/Dialog/Dialog.ms" )	--"./../MAXSCRIPT-UI-framework/Lib/Dialog/Dialog.ms"
@@ -18,6 +20,8 @@ filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerManagerApp.ms" )	--"./
 filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerKeywordManager/LayerKeywordManager.ms" )	--"./Lib/LayerKeywordManager/LayerKeywordManager.ms"
 
 filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerKeywordManager/layerTreeGenerator.ms" )	--"./Lib/LayerKeywordManager/layerTreeGenerator.ms"
+
+filein( getFilenamePath(getSourceFileName()) + "/Lib/Callbacks/layerToggleCallback.ms" )	--"./Lib/Callbacks/layerToggleCallback.ms"
 
 filein( getFilenamePath(getSourceFileName()) + "/loadContentAndCreateDialog.ms" )	--"./loadContentAndCreateDialog.ms"
 
@@ -69,4 +73,4 @@ Dialog = dwgToolsDialog Dialog:Dialog width:dialog_width
 --
 --layerTreeGenerator layer_names
 --
---AddSubRollout DIALOG_dwgtools.subrollouts_1 tvRollout
+--AddSubRollout DIALOG_dwgtools.subrollouts_1 tv_rollout

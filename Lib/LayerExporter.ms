@@ -53,6 +53,7 @@ struct LayerExporter
 		)
 		
 		local optimized_list = optimizeKeywords sanitized_names
+		
 		for i = 1 to optimized_list.count do
 		(
 			setINISetting target_ini "Keywords" ("Key_" + i as string) optimized_list[i]

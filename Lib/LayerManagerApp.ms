@@ -14,6 +14,7 @@ struct LayerManagerApp
 	(
 		--format "\n"; print "LayerManagerApp.getIniFiles()"
 		ini_dir = maxfilepath
+		
 		if ini_dir == "" do ini_dir = (getDir #temp + "\\")
 		
 		if current_ini_path == "" do current_ini_path = exporter.getIniFilePath()
@@ -25,8 +26,17 @@ struct LayerManagerApp
 		ini_files --return
 	),
 	
+	function changeIni idx =
+	(
+		if idx > 0 and idx <= ini_files.count do
+		(
+			current_ini_path = ini_files[idx]
+			--showUi() 
+		)
+	),
 	
-	fn getKeywordColor kw =
+	
+	function getKeywordColor kw =
 	(
 		local best_color = color 128 128 128
 		local max_count = -1
@@ -51,7 +61,7 @@ struct LayerManagerApp
 		return best_color
 	),
 
-	fn selectKeywordObjects kw =
+	function selectKeywordObjects kw =
 	(
 		local objs = #()
 		for i = 0 to (layerManager.count - 1) do
@@ -69,7 +79,7 @@ struct LayerManagerApp
 		else select objs
 	),
 
-	fn initUi =
+	function initUi =
 	(
 		local ddl_items = for f in ini_files collect (getFilenameFile f)
 		rlt_layer_manager.ddl_inis.items = ddl_items
@@ -83,7 +93,7 @@ struct LayerManagerApp
 	),
 
 	-- Defining showUi BEFORE changeIni to fix the scope bug
-	fn showUi =
+	function showUi =
 	(
 		ini_dir = maxfilepath
 		if ini_dir == "" do ini_dir = (getDir #temp + "\\")
@@ -170,14 +180,18 @@ struct LayerManagerApp
 	),
 
 	-- Placed here so showUi() is already defined in scope
-	fn changeIni idx =
+	private
+	
+
+	/**
+	 */
+	on create do
 	(
-		if idx > 0 and idx <= ini_files.count do
-		(
-			current_ini_path = ini_files[idx]
-			showUi() 
-		)
+		--format "\n"; print "LayerManagerApp.onCreate()"
+		--for prop in #(  ) where getProperty this prop == undefined do -- CHECK CONSTRUCT PROPERTIES -- Array of this struct properties necessary to run
+		--	throw ("\n\n\nUNDEFINED CONSTRUCT PROPERTY\n\n\nSTRUCT:\n\n"+ ((filterString( classof this as string )"(:")[2]) +"\n\n\nPROPERTY:\n\n"+ prop )
 	)
+
 )
 
 -- Launch UI
