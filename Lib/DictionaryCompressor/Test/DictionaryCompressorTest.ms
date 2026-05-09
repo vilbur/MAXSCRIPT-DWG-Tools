@@ -3,59 +3,55 @@ clearListener(); print("Cleared in: "+getSourceFileName())
 filein( getFilenamePath(getSourceFileName()) + "/../DictionaryCompressor.ms" )	--"./../DictionaryCompressor.ms"
 
 
-/** Get test dictionary
+
+/** Dictionary factory
  */
-function getTestDictionary =
+function dictionaryFactory root_dict level:1 max_level: =
 (
-	--format "\n"; print ".getTestDictionary()"
+	--format "\n"; print "DictionaryFactory_v.dictionaryFactory()"
+	--format "level: %\n" level
 	
-	root_dict = Dictionary #string
+	levels = #( "Prefix", "Keyword", "Prop", "Suffix" )
 	
-	vehicle_dict = Dictionary #string
-	car_dict = Dictionary #string
-	sports_dict = Dictionary #string
-	
-	sports_dict["wheel"] = "rubber"
-	
-	car_dict["sports"] = sports_dict
-	vehicle_dict["car"] = car_dict
-	
-	root_dict["vehicle"] = vehicle_dict
-	
-	
-	nature_dict = Dictionary #string
-	tree_dict = Dictionary #string
-	
-	tree_dict["leaf"] = "green"
-	
-	nature_dict["tree"] = tree_dict
-	
-	root_dict["nature"] = nature_dict
-	
-	
-	house_dict = Dictionary #string
-	
-	room_dict = Dictionary #string
-	room_dict["kitchen"] = "white"
-	room_dict["bedroom"] = "blue"
-	
-	house_dict["room"] = room_dict
-	
-	root_dict["house"] = house_dict
-	
+	if max_level == unsupplied then
+		max_level = levels.count
+
+	for i = 1 to levels.count - level + 1 do
+	(
+
+		key = levels[level]
+
+		key_1 = key + "_" + i as string
+		
+		nested_dict =  Dictionary #STRING
+			
+		root_dict[ key_1 ] = nested_dict
+
+		if level < levels.count  then
+			nested_dict = dictionaryFactory(nested_dict) level:( level + 1 ) --smax_level:( max_level - level )
+	)
+	--format "root_dict: %\n" root_dict
 	root_dict --return
 )
 
 
 
-test_dict = getTestDictionary()
 
-DictionaryCompressor = DictionaryCompressor_v() --dictionary:test_dict
+dict_test	= Dictionary #STRING
 
-format "\n=== ORIGINAL ===\n"
-DictionaryCompressor.printDictionary test_dict
+dict_test = dictionaryFactory(dict_test)
 
-compressed_dict = DictionaryCompressor.compressDictionary(test_dict)
 
-format "\n=== COMPRESSED ===\n"
-DictionaryCompressor.printDictionary compressed_dict
+DictionaryCompressor = DictionaryCompressor_v() --dictionary:dict_test
+
+print "\n=== ORIGINAL ===\n"
+--for key in dict_test.keys do format "key: % \nVALUE: %\n\n" key dict_test[key]
+DictionaryCompressor.printDictionary(dict_test)
+
+compressed_dict = DictionaryCompressor.compressDictionary(dict_test)
+
+print "\n=== COMPRESSED ===\n"
+
+--for key in compressed_dict.keys do format "key: % \nVALUE: %\n\n" key compressed_dict[key]
+	
+--DictionaryCompressor.printDictionary compressed_dict
