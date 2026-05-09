@@ -10,10 +10,9 @@ function layerTreeGenerator =
 	
 	try(destroyDialog tv_rollout)catch()
 
-	rollout tv_rollout "Layers Manager" width:400 height:1140
+	rollout tv_rollout "Layers Manager" width:400 --height:1140
 	(
-		dotNetControl tv "System.Windows.Forms.TreeView" width:380 height:1400 pos:[10,10]
-	
+		dotNetControl tv "System.Windows.Forms.TreeView" width:380 height:512 pos:[0,10]
 	
 		local is_updating = false
 		
@@ -28,6 +27,21 @@ function layerTreeGenerator =
 		local checkbox_size = 18
 		local font_size = 12
 		local line_padding = 2
+
+		-- Custom Multi-Selection Variables
+		local selected_nodes = #()
+		local last_selected_node = undefined
+		local bg_color_obj = (dotNetClass "System.Drawing.Color").FromArgb 40 40 40
+		local highlight_color_obj = (dotNetClass "System.Drawing.Color").FromArgb 70 130 180
+
+		/** * Helper to clear custom selections cleanly
+		 */
+		function clearCustomSelection =
+		(
+			for n in selected_nodes do try(n.BackColor = bg_color_obj)catch()
+			selected_nodes = #()
+			last_selected_node = undefined
+		)
 
 		/** * Updates the font color based on the state and locked status
 		 */
@@ -190,6 +204,7 @@ function layerTreeGenerator =
 		(
 			show_mixed_items = not show_mixed_items
 			tv.BeginUpdate()
+			clearCustomSelection()
 			tv.Nodes.Clear()
 			if layer_names_keywords != undefined do 
 				populateTreeNode layer_names_keywords tv.Nodes ""
@@ -225,7 +240,6 @@ function layerTreeGenerator =
 
 		function expandAllNodes = (tv.ExpandAll())
 		function collapseAllNodes = (tv.CollapseAll())
-
 
 		/** * Checks items that match any of the provided string masks (wildcards supported) to a specific state.
 		 */
@@ -296,6 +310,7 @@ function layerTreeGenerator =
 			)
 			
 			-- Rebuild tree to apply loaded states visually
+			clearCustomSelection()
 			tv.Nodes.Clear()
 			if layer_names_keywords != undefined do 
 				populateTreeNode layer_names_keywords tv.Nodes ""
@@ -307,6 +322,12 @@ function layerTreeGenerator =
 		
 		
 		/* --- EVENTS --- */
+
+		on tv BeforeSelect arg do
+		(
+			-- Makes native items 'unselectable' so our custom selection logic works cleanly
+			arg.Cancel = true
+		)
 
 		on tv NodeMouseClick arg do
 		(
@@ -344,11 +365,13 @@ function layerTreeGenerator =
 				m_menu.Show tv (dotNetObject "System.Drawing.Point" arg.X arg.Y)
 			)
 			
-			-- Left Click logic (Single Click Toggle)
+			-- Left Click logic
 			if arg.Button == arg.Button.Left and not is_updating do
 			(
 				local hit_info = tv.HitTest arg.X arg.Y
-				if matchPattern (hit_info.Location.ToString()) pattern:"*StateImage*" do
+				
+				-- 1. Clicking the Checkbox (StateImage)
+				if matchPattern (hit_info.Location.ToString()) pattern:"*StateImage*" then
 				(
 					local current_node = hit_info.Node
 					local locked_color_argb = ((dotNetClass "System.Drawing.Color").FromArgb 100 100 100).ToArgb()
@@ -366,12 +389,81 @@ function layerTreeGenerator =
 						else
 							new_state = if current_node.StateImageIndex == 1 then 0 else 1
 							
-						updateNodeState current_node new_state
-						
-						if layerToggleCallback != undefined do 
-							layerToggleCallback new_state (current_node.Tag as string)
+						-- Apply state change to all selected nodes if the clicked node is selected
+						if (findItem selected_nodes current_node > 0) then
+						(
+							for sn in selected_nodes where sn.ForeColor.ToArgb() != locked_color_argb do
+							(
+								updateNodeState sn new_state
+								if layerToggleCallback != undefined do layerToggleCallback new_state (sn.Tag as string)
+							)
+						)
+						else
+						(
+							updateNodeState current_node new_state
+							
+							if layerToggleCallback != undefined do 
+								layerToggleCallback new_state (current_node.Tag as string)
+						)
 							
 						is_updating = false 
+					)
+				)
+				-- 2. Clicking the Label (Multi-Select Logic)
+				else if matchPattern (hit_info.Location.ToString()) pattern:"*Label*" then
+				(
+					local current_node = hit_info.Node
+					local is_ctrl = keyboard.controlPressed
+					local is_shift = keyboard.shiftPressed
+					
+					if is_shift and last_selected_node != undefined then
+					(
+						-- Shift Select
+						if not is_ctrl do
+						(
+							for n in selected_nodes do n.BackColor = bg_color_obj
+							selected_nodes = #()
+						)
+						
+						local all_nodes = getAllNodes tv.Nodes
+						local idx1 = findItem all_nodes last_selected_node
+						local idx2 = findItem all_nodes current_node
+						
+						if idx1 > 0 and idx2 > 0 do
+						(
+							local start_idx = amin idx1 idx2
+							local end_idx = amax idx1 idx2
+							for i = start_idx to end_idx do
+							(
+								local n = all_nodes[i]
+								appendIfUnique selected_nodes n
+								n.BackColor = highlight_color_obj
+							)
+						)
+					)
+					else if is_ctrl then
+					(
+						-- Ctrl Select (Toggle)
+						local idx = findItem selected_nodes current_node
+						if idx > 0 then
+						(
+							deleteItem selected_nodes idx
+							current_node.BackColor = bg_color_obj
+						)
+						else
+						(
+							appendIfUnique selected_nodes current_node
+							current_node.BackColor = highlight_color_obj
+							last_selected_node = current_node
+						)
+					)
+					else
+					(
+						-- Normal Click
+						for n in selected_nodes do n.BackColor = bg_color_obj
+						selected_nodes = #(current_node)
+						current_node.BackColor = highlight_color_obj
+						last_selected_node = current_node
 					)
 				)
 			)
@@ -403,6 +495,7 @@ function layerTreeGenerator =
 		on tv_rollout open do
 		(
 			tv.SuspendLayout()
+			clearCustomSelection()
 			tv.Nodes.Clear()
 			tv.Sorted = true
 			
@@ -414,9 +507,8 @@ function layerTreeGenerator =
 			tv.CheckBoxes = false
 			tv.StateImageList = createTriStateImageList checkbox_size
 			
-			local color_class = dotNetClass "System.Drawing.Color"
-			tv.BackColor = color_class.FromArgb 40 40 40
-			tv.LineColor = color_class.FromArgb 150 150 150
+			tv.BackColor = bg_color_obj
+			tv.LineColor = (dotNetClass "System.Drawing.Color").FromArgb 150 150 150
 			
 			if layer_names_keywords != undefined do 
 				populateTreeNode layer_names_keywords tv.Nodes ""

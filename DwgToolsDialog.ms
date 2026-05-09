@@ -23,7 +23,7 @@ function adddKeywordsTo _Controls keyword keywords width:256 level:0 id: =
 		
 	width = width - ( level * 24 )
 
-	format "ID: %\n" id
+	--format "ID: %\n" id
 	_checkbutton = _Controls.control #CHECKBUTTON keyword across:1 width:width id:id align:#RIGHT checked:true --highlightColor:red
 	
 	_checkbutton.Event #CHANGED "layerToggleCallback"
@@ -39,10 +39,11 @@ function adddKeywordsTo _Controls keyword keywords width:256 level:0 id: =
  */
 function dwgToolsDialog Dialog: width: =
 (
-	format "\n"; print ".dwgToolsDialog()"
+	--format "\n"; print ".dwgToolsDialog()"
 	--format "Dialog: %\n" Dialog
 	--format "width: %\n" width
 
+	dialog_height = (getMAXWindowSize()).y - 256
 
 	/* SETUP */
 	ini_files = LAYER_MANAGER_APP.getIniFiles()
@@ -50,7 +51,7 @@ function dwgToolsDialog Dialog: width: =
 	
 	/* DIALOG */
 	if Dialog == undefined then 
-		Dialog 	    = Dialog_v ("DwgTools") width:width debug:true --ini:(getSourceFileName()) 
+		Dialog 	    = Dialog_v ("DwgTools") width:width height:dialog_height debug:true --ini:(getSourceFileName()) 
 	
 	/*------------------------------------------------------------------------------
 		PRESET CONTROLS
@@ -117,7 +118,7 @@ function dwgToolsDialog Dialog: width: =
 	--Dialog --return
 	--Dialog.create height:undefined --width:dialog_width
 	--Dialog.create height:1280
-	Dialog.create height:1600
+	Dialog.create height:dialog_height
 
 	LAYER_MANAGER_APP.Controls [#ROLLOUT]	= tv_rollout
 	
@@ -139,10 +140,21 @@ function dwgToolsDialog Dialog: width: =
 
 	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
 	
+	--layerTreeGenerator( dialog_height  )
 	layerTreeGenerator()
+	
 	
 	--format "tv_rollout: %\n" tv_rollout
 	AddSubRollout DIALOG_dwgtools.subrollouts_1 tv_rollout
+	
+	format "DIALOG_dwgtools.subrollouts_1.ROLLOUT_layer_names_config.height: %\n" DIALOG_dwgtools.subrollouts_1.ROLLOUT_layer_names_config.height
+	
+	rollout_height = dialog_height - DIALOG_dwgtools.subrollouts_1.pos.y - DIALOG_dwgtools.subrollouts_1.ROLLOUT_layer_names_config.height - 52
+	
+	format "dialog_height: %\n" dialog_height
+	format "rollout_height: %\n" rollout_height
+	tv_rollout.height = rollout_height
+	tv_rollout.tv.height = tv_rollout.height - 16
 	
 )
 

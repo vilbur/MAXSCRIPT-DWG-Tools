@@ -37,8 +37,8 @@ struct LayerKeywordManager_v
 		
 		for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined and layer.name != "0" do
 		(
-			--format "\n"
-			--format "layer.name: %\n" layer.name
+			format "\n"
+			format "layer.name: %\n" layer.name
 			
 			/* SANITIZE LAYER NAME */ 
 			--layer_name = (dotnetclass "System.Text.RegularExpressions.Regex").Replace layer.name "[^a-zA-Z0-9\\d\\s\\-_]+" ""
@@ -48,7 +48,7 @@ struct LayerKeywordManager_v
 			layer_name_split	= filterString layer_name delimeter
 			
 			prefix = layer_name_split[1]
-			--format "PREFIX: %\n" prefix
+
 			
 			/* IF LAYER NAME CAN BE SPLITTED */ 
 			if prefix != undefined then
@@ -56,12 +56,14 @@ struct LayerKeywordManager_v
 				prefix_mask_full_string = trimRight ( trimLeft prefix_mask "^$" )  "^$"
 				
 				prefix_mask_full_string = "^" + prefix_mask_full_string + "$"
-				format "prefix_mask_full_string: %\n" prefix_mask_full_string
 
 				prefix_match = (( dotNetClass "System.Text.RegularExpressions.RegEx" ).match prefix prefix_mask_full_string ).success
+				
+				format "prefix: %\n" prefix
+				
+				format "prefix_match: %\n" prefix_match
 			)
 			
-			--format "prefix_match: %\n" prefix_match
 		
 			if prefix_match == true and layer_name_split.count > 1 then
 			(
@@ -77,8 +79,8 @@ struct LayerKeywordManager_v
 					sub_keywords = sub_keywords[keyword]
 				)
 			)
-			else
-				keywords[layer_name] = Dictionary #STRING
+			--else
+				--keywords[layer_name] = Dictionary #STRING
 			
 			--format "layer: %\n" layer_name
 		)
