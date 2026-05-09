@@ -147,7 +147,7 @@ function layerTreeGenerator =
 			for k in dict.keys do
 			(
 				local sub_dict = dict[k]
-				local current_id = if parent_id_path == "" then k else (parent_id_path + "_" + k)
+				local current_id = if parent_id_path == "" then k else (parent_id_path + " " + k)
 				
 				local current_state = 0
 				if hasDictValue node_states current_id then 

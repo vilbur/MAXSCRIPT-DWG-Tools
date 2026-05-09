@@ -22,7 +22,7 @@ if LayerManager.count == 1 then
 	
 	--CreateTestLayers()
 	
-	LayerManager.editLayerByName "0"
+	--LayerManager.editLayerByName "0"
 )
 
 

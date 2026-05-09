@@ -59,28 +59,31 @@ struct LayerKeywordManager_v
 
 				prefix_match = (( dotNetClass "System.Text.RegularExpressions.RegEx" ).match prefix prefix_mask_full_string ).success
 				
-				format "prefix: %\n" prefix
+				--format "prefix: %\n" prefix
 				
-				format "prefix_match: %\n" prefix_match
+				--format "prefix_match: %\n" prefix_match
 			)
 			
 		
 			if prefix_match == true and layer_name_split.count > 1 then
 			(
-				sub_keywords = keywords
+				keywords_nested = keywords
 				
 				for x = 2 to layer_name_split.count do
 				(
 					keyword = toLower layer_name_split[x]
 					
-					if sub_keywords[keyword] == undefined then
-						sub_keywords[keyword] = Dictionary #STRING
+					--keyword += " X"
 					
-					sub_keywords = sub_keywords[keyword]
+					if keywords_nested[keyword] == undefined then
+						keywords_nested[keyword] = Dictionary #STRING
+					
+					/* NEXT LOOP */ 
+					keywords_nested = keywords_nested[keyword]
 				)
 			)
-			--else
-				--keywords[layer_name] = Dictionary #STRING
+			else
+				keywords[layer_name] = Dictionary #STRING
 			
 			--format "layer: %\n" layer_name
 		)

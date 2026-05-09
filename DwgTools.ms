@@ -29,6 +29,7 @@ filein( getFilenamePath(getSourceFileName()) + "/loadContentAndCreateDialog.ms" 
 filein( getFilenamePath(getSourceFileName()) + "/dwgToolsDialog.ms" )	--"./dwgToolsDialog.ms"
 
 
+LayerManager.editLayerByName "0"
 
 /*------------------------------------------------------------------------------
 	CREATE DIALOG
@@ -65,3 +66,4 @@ Dialog = dwgToolsDialog Dialog:Dialog width:dialog_width
 --layerTreeGenerator layer_names
 --
 --AddSubRollout DIALOG_dwgtools.subrollouts_1 tv_rollout
+

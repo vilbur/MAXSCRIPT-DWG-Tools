@@ -2,10 +2,7 @@
  */
 function layerToggleCallback state item_id =
 (
-	--format "\n"; print ".layerToggleCallback()"
-	--format "state: %\n" state
-	--format "EventFired: %\n" EventFired
-    format "Callback Triggered -> State: % | Item ID: %\n" state item_id
+    format "layerToggleCallback State: % | Item ID: %\n" state item_id
 
 	/** Join array to string
 	 */
@@ -24,14 +21,17 @@ function layerToggleCallback state item_id =
 	--id_split	= filterString item_id "_"
 	--pattern = arrayToString id_split "*"
 	
-	pattern = item_id
-	--format "PATTERN: %\n" pattern
+	pattern =  ignore_prefix + item_id
+	
+	
+	pattern =  ignore_prefix + pattern
+	format "PATTERN: %\n" pattern
 	
 	
 	for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined do
 	(
 		
-		if matchPattern layer.name pattern:( ignore_prefix + pattern ) then
+		if matchPattern layer.name pattern:( pattern ) then
 		--if matchPattern layer.name pattern:( pattern ) then
 		(
 			layer.on = mode == #SHOW 
