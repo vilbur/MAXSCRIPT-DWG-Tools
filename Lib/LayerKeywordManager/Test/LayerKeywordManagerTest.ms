@@ -241,11 +241,15 @@ function generateTestLayers =
 
 	DISABLED FOR INCLUDIONG TO OTHEHR TESTS IN OTEHR FILES
 
---if LayerManager.count == 1 then
---	generateTestLayers()
---
---LayerKeywordManager = LayerKeywordManager_v()
---
---
---LayerKeywordManager.splitLayerNamesByKeywords()
+
+
+
 --------------------------------------------------------------------------------*/
+
+if LayerManager.count == 1 then
+	generateTestLayers()
+
+LayerKeywordManager = LayerKeywordManager_v()
+
+
+LayerKeywordManager.splitLayerNamesByKeywords()

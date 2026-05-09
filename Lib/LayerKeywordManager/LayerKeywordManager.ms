@@ -39,6 +39,7 @@ struct LayerKeywordManager_v
 		(
 			--format "\n"
 			--format "layer.name: %\n" layer.name
+			
 			/* SANITIZE LAYER NAME */ 
 			--layer_name = (dotnetclass "System.Text.RegularExpressions.Regex").Replace layer.name "[^a-zA-Z0-9\\d\\s\\-_]+" ""
 			layer_name = layer.name
@@ -49,14 +50,15 @@ struct LayerKeywordManager_v
 			prefix = layer_name_split[1]
 			--format "PREFIX: %\n" prefix
 			
-				
+			/* IF LAYER NAME CAN BE SPLITTED */ 
 			if prefix != undefined then
 			(
-				prefix_mask = trimRight ( trimLeft prefix_mask "^$" )  "^$"
+				prefix_mask_full_string = trimRight ( trimLeft prefix_mask "^$" )  "^$"
 				
-				prefix_mask = "^" + prefix_mask + prefix_mask + "$"
-				
-				prefix_match = (( dotNetClass "System.Text.RegularExpressions.RegEx" ).match prefix prefix_mask ).success
+				prefix_mask_full_string = "^" + prefix_mask_full_string + "$"
+				format "prefix_mask_full_string: %\n" prefix_mask_full_string
+
+				prefix_match = (( dotNetClass "System.Text.RegularExpressions.RegEx" ).match prefix prefix_mask_full_string ).success
 			)
 			
 			--format "prefix_match: %\n" prefix_match

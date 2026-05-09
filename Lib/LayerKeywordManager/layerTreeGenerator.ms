@@ -10,7 +10,7 @@ function layerTreeGenerator =
 	
 	try(destroyDialog tv_rollout)catch()
 
-	rollout tv_rollout "Dark Layer Tree View" width:400 height:1140
+	rollout tv_rollout "Layers Manager" width:400 height:1140
 	(
 		dotNetControl tv "System.Windows.Forms.TreeView" width:380 height:1400 pos:[10,10]
 	

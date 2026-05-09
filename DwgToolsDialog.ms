@@ -55,7 +55,8 @@ function dwgToolsDialog Dialog: width: =
 	/*------------------------------------------------------------------------------
 		PRESET CONTROLS
 	--------------------------------------------------------------------------------*/
-	_Controls   = Dialog.Controls group:("PRESET")
+	_Controls   = Dialog.Controls group:("LAYERS PRESET")
+	
 	
 	preset_name = _Controls.control #EDITTEXT "[Ini Name]" --value:( preset_list.getFullId() + ".items[1]" ) across:1
 	preset_list = _Controls.control #DROPDOWN "[Presets List]"  items:( for ini_file in ini_files collect getFilenameFile ini_file )
@@ -88,26 +89,28 @@ function dwgToolsDialog Dialog: width: =
 	btn_preset_delete.Event	#PRESSED ("LAYER_MANAGER_APP.deleteIniFile()")
 	
 	
-	
-	
+	_Rollouts	 = Dialog.Rollouts height:1024
 
-	/*------------------------------------------------------------------------------
-		LAYER NAME CONTROLS
-	--------------------------------------------------------------------------------*/
-	_Controls_layer   = Dialog.Controls group:("LAYER NAMES CONFIG") 
-
-	--_Controls_layer.Default #fieldWidth 64 type:#EDITTEXT
-
-	word_delimeter = _Controls_layer.control #EDITTEXT "Word Delimeter" value:"[0-9a-zA-Z]+" fieldWidth:128
-	prefix_match = _Controls_layer.control #EDITTEXT "Prefix Match" value:"\\s+" fieldWidth:128
-	
-	
-	
 
 	--for key in LAYER_NAMES_KEYWORDS.keys do format "key: % \nVALUE: %\n\n" key LAYER_NAMES_KEYWORDS[key]
 
 	/* ROLLOUTS */
-	_Rollouts	 = Dialog.Rollouts height:1024
+	_Rollout_cfg	 = _Rollouts.Roll "Layer Names Config"
+	
+	/*------------------------------------------------------------------------------
+		LAYER NAME CONTROLS
+	--------------------------------------------------------------------------------*/
+	_Controls_cfg   = _Rollout_cfg.Controls() --group:("LAYER NAMES CONFIG") 
+
+	_Controls_cfg.Default #fieldWidth	128	type:#EDITTEXT
+	_Controls_cfg.Default #offset	[ -64, 0]	type:#EDITTEXT
+	
+
+	btn_word_delimeter	= _Controls_cfg.control #EDITTEXT "Word Delimeter"	value:"\\s+" --fieldWidth:128
+	btn_prefix_match	= _Controls_cfg.control #EDITTEXT "Prefix Match"	value:"[0-9a-zA-Z]+" --fieldWidth:128
+	
+	
+	
 	
 	
 	/* RETURN DIALOG */ 
@@ -123,6 +126,8 @@ function dwgToolsDialog Dialog: width: =
 	LAYER_MANAGER_APP.addControl #btn_preset_load 	btn_preset_load
 	LAYER_MANAGER_APP.addControl #btn_preset_delete 	btn_preset_delete
 	
+	LAYER_MANAGER_APP.addControl #btn_word_delimeter 	btn_word_delimeter
+	LAYER_MANAGER_APP.addControl #btn_prefix_match 	btn_prefix_match
 	
 	
 	/*------------------------------------------------------------------------------
