@@ -4,6 +4,8 @@ struct LayerManagerApp
 	exporter = LayerExporter(),
 	cleaner = LayerCleaner(),
 	
+	Controls	= Dictionary #NAME, -- KEY: VALUE:
+	
 	current_ini_path = "",
 	ini_dir = "",
 	ini_files = #(),
@@ -21,13 +23,22 @@ struct LayerManagerApp
 		if current_ini_path == "" then
 			current_ini_path = exporter.getIniFilePath()
 		
-		ini_files = getFiles (ini_dir + "*.ini")
+		ini_files = sort ( getFiles (ini_dir + "*.ini"))
 		
 		if ini_files.count == 0 then
 			append ini_files current_ini_path
 
 		--format "ini_dir: %\n" ini_dir
 		ini_files --return
+	),
+	
+	/** Add control
+	 */
+	function addControl key _Control_v =
+	(
+		--format "\n"; print "LayerManagerApp.addControl()"
+		
+		this.Controls[ key ] = execute ( _Control_v.getFullId() )
 	),
 	
 	function changeIni idx =
@@ -47,11 +58,34 @@ struct LayerManagerApp
 		this._setIniPath (filename_new)
 	),
 	
-	/** Save ini state
+	/** DELETE INI FILE
+	 */
+	function deleteIniFile =
+	(
+		--format "\n"; print "LayerManagerApp.deleteIniFile()"
+		if queryBox ( "DELETE Preset ?\n\n" + getFilenameFile ( current_ini_path ) ) title:( "DELETE PRESET") then
+			if ( index = findItem ini_files current_ini_path ) > 0 then
+			(
+				deleteItem ini_files index
+				
+				
+				prev_index = index - 1
+				
+				this.changeIni(prev_index)
+				
+				this.Controls[ #DD_PRESETS ].items	= sort( for ini_file in ini_files collect getFilenameFile ini_file )
+				this.Controls[ #DD_PRESETS ].selection	= if prev_index > 0 then prev_index else 1
+				
+				deleteFile current_ini_path
+			)
+	),
+	
+	/** SAVE INI STATE
 	 */
 	function saveStateToIni filename =
 	(
-		--format "\n"; print "LayerManagerApp.saveStateToIni()"
+		format "\n"; print "LayerManagerApp.saveStateToIni()"
+		format "this.Controls[ #ROLLOUT ]: %\n" (this.Controls[ #ROLLOUT ])
 		--format "filename: %\n" filename
 		--format "ini_dir: %\n" ini_dir
 		
@@ -68,17 +102,8 @@ struct LayerManagerApp
 		
 	),
 	
-	/** Get ini path
-	 */
-	function _setIniPath filename =
-	(
-		--format "\n"; print "LayerManagerApp._setIniPath()"
-		--this.current_ini_path = ini_dir + filename + ".ini"
-		this.current_ini_path = ini_dir + (getFilenameFile ( filename )) + ".ini"
-		--format "current_ini_path: %\n" current_ini_path
-	),
-	
-	/** Load ini state
+
+	/** LOAD INI STATE
 	 */
 	function loadStateFromIni selected_inifile =
 	(
@@ -119,12 +144,7 @@ struct LayerManagerApp
 			this._setIniPath (ini_files[selected_inifile] )
 
 			--format "this.current_ini_path: %\n" this.current_ini_path
-			/*------------------------------------------------------------------------------
-				LOAD STATE FROM INI
-			--------------------------------------------------------------------------------*/
-			
-			tv_rollout.loadStateFromIni (this.current_ini_path)
-			
+	
 			/*------------------------------------------------------------------------------
 				SET LAYERS STATE
 			--------------------------------------------------------------------------------*/
@@ -140,17 +160,26 @@ struct LayerManagerApp
 			/* RESET LAYERS STATE - HIDE & UNFREEZE ALL LAYERS */ 			
 			for layer in all_layers do layer.on = layer.isfrozen = false
 			
+			/*------------------------------------------------------------------------------
+				LOAD STATE FROM INI
+			--------------------------------------------------------------------------------*/
+			tv_rollout.loadStateFromIni (this.current_ini_path)
+			
 			/* MANAGE EACH LAYER */ 
 			for layer in all_layers do
 			(
-				/* SHOW \ HIDE LAYER */ 
-				layer.on = isMaskMatching layer.name mask_enabled
-				layer.isfrozen = isMaskMatching layer.name mask_mixed
+				/* SHOW \ HIDE LAYER */
+				
+				--if mask_enabled.count > 0 then
+					--layer.on = isMaskMatching layer.name mask_enabled
+
+				--if mask_mixed.count > 0 then
+					--layer.isfrozen = isMaskMatching layer.name mask_mixed
 
 				--if is_frozen then
 				--(
 				--	format "\n"
-				--	format "layer.name: %\n" layer.name
+					--format "layer.name: %\n" layer.name
 				--	--format "is_enabled: %\n" is_enabled
 				--	format "is_frozen: %\n" is_frozen
 				--	
@@ -308,6 +337,13 @@ struct LayerManagerApp
 	-- Placed here so showUi() is already defined in scope
 	private
 	
+	
+	/** Get ini path
+	 */
+	function _setIniPath filename =
+	(
+		this.current_ini_path = ini_dir + (getFilenameFile ( filename )) + ".ini"
+	),
 
 	/**
 	 */

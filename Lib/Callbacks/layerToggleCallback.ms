@@ -11,22 +11,30 @@ function layerToggleCallback state item_id =
 	 */
 	function arrayToString arr delimeter = ( _string = ""; for item in arr do _string += item as string  + delimeter; substring _string 1 (_string.count-delimeter.count))
 	
+	mode = case state of
+	(
+		0:#HIDE
+		1:#SHOW
+		2:#FREEZE
+	)
+	
 	id_split	= filterString item_id "_"
 	
-	--deleteItem id_split 1
-
 	ignore_prefix = ignore_sufix = "*"
 	pattern = arrayToString id_split "*"
-	
 	--format "PATTERN: %\n" pattern
 	
 	
 	for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined do
 	(
 		
-		if matchPattern layer.name pattern:( ignore_prefix + pattern + ignore_sufix ) then
-			layer.on = state
-			--format "LAYER: %\n" layer.name
+		if matchPattern layer.name pattern:( ignore_prefix + pattern ) then
+		--if matchPattern layer.name pattern:( pattern ) then
+		(
+			layer.on = mode == #SHOW 
+			
+			layer.isfrozen = mode == #FREEZE
+		)
 		
 	)
 )
