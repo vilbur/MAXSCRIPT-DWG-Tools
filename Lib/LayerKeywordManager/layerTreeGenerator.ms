@@ -27,6 +27,7 @@ function layerTreeGenerator =
 		-- Customizable Sizes
 		local checkbox_size = 18
 		local font_size = 12
+		local line_padding = 2
 
 		/** * Updates the font color based on the state and locked status
 		 */
@@ -407,8 +408,8 @@ function layerTreeGenerator =
 			
 			-- Apply dynamic fonts
 			tv.Font = dotNetObject "System.Drawing.Font" "Arial" font_size
-			tv.ItemHeight = (amax #(checkbox_size + 4, font_size + 8)) as integer
-			
+			tv.ItemHeight = (amax #(checkbox_size + line_padding, font_size + line_padding)) as integer
+
 			-- Disable native checkboxes and inject dynamic Tri-State images
 			tv.CheckBoxes = false
 			tv.StateImageList = createTriStateImageList checkbox_size

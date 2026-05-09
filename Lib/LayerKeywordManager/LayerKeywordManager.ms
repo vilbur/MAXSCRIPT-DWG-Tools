@@ -28,7 +28,7 @@ struct LayerKeywordManager_v
 
 	/** Split layer names by keywords
 	 */
-	function splitLayerNamesByKeywords delimeter:" " prefix_mask:"^[0-9a-zA-Z]+$" =
+	function splitLayerNamesByKeywords delimeter:" " prefix_mask:"[0-9a-zA-Z]+" =
 	(
 		--format "\n"; print "LayerKeywordManager_v.splitLayerNamesByKeywords()"
 		
@@ -40,15 +40,25 @@ struct LayerKeywordManager_v
 			--format "\n"
 			--format "layer.name: %\n" layer.name
 			/* SANITIZE LAYER NAME */ 
-			layer_name = (dotnetclass "System.Text.RegularExpressions.Regex").Replace layer.name "[^a-zA-Z0-9\\d\\s\\-_]+" ""
+			--layer_name = (dotnetclass "System.Text.RegularExpressions.Regex").Replace layer.name "[^a-zA-Z0-9\\d\\s\\-_]+" ""
+			layer_name = layer.name
+			
 			--format "layer_name: %\n" layer_name
 			layer_name_split	= filterString layer_name delimeter
 			
 			prefix = layer_name_split[1]
 			--format "PREFIX: %\n" prefix
 			
+				
 			if prefix != undefined then
+			(
+				prefix_mask = trimRight ( trimLeft prefix_mask "^$" )  "^$"
+				
+				prefix_mask = "^" + prefix_mask + prefix_mask + "$"
+				
 				prefix_match = (( dotNetClass "System.Text.RegularExpressions.RegEx" ).match prefix prefix_mask ).success
+			)
+			
 			--format "prefix_match: %\n" prefix_match
 		
 			if prefix_match == true and layer_name_split.count > 1 then

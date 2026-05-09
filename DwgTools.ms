@@ -29,15 +29,6 @@ filein( getFilenamePath(getSourceFileName()) + "/loadContentAndCreateDialog.ms" 
 filein( getFilenamePath(getSourceFileName()) + "/dwgToolsDialog.ms" )	--"./dwgToolsDialog.ms"
 
 
-/*------------------------------------------------------------------------------
-	TEST SCENE
---------------------------------------------------------------------------------*/
-
-filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerKeywordManager/Test/LayerKeywordManagerTest.ms" )	--"./Lib/LayerKeywordManager/Test/LayerKeywordManagerTest.ms"
-
-if LayerManager.count == 1 then
-	generateTestLayers()
-
 
 /*------------------------------------------------------------------------------
 	CREATE DIALOG

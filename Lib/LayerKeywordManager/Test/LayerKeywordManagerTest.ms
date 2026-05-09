@@ -65,12 +65,46 @@ function CreateTestLayers prefix_name:#("A",  "B") keyword_pool:#("MainX", "Main
     (
         layer_name = ""
 
+		/** Get random delimeter
+		 */
+		function getRandomDelimeter delimeter =
+		(
+			--format "\n"; print ".getRandomDelimeter()"
+		
+			delimeters = for i = 1 to delimeter.count collect delimeter[i]
+			
+			delimeters[ random 1 delimeters.count ]
+		)
+		
         for i = 1 to token_array.count where ( word = token_array[i] ) != "" do
-               layer_name += ( if layer_name != "" then delimeter else "" ) +  word as string
+               layer_name += ( if layer_name != "" then getRandomDelimeter delimeter else "" ) +  word as string
 
 --format "layer_name: %\n" layer_name
         layer_name -- return
     )
+	
+	/** Append ranom item
+	 */
+	function appendRanomItem pool &name_params =
+	(
+		--format "\n"; print ".appendRanomItem()"
+		/*  Returns random item from array.
+			Array must contain at least one item.
+		*/
+		function _getRandomItem source_array = source_array[(random 1 source_array.count)]
+	
+		
+		if pool.count > 0 then
+		(
+			keyword = _getRandomItem pool
+		      
+		    --append name_params ( keyword + "_" + (formattedPrint item_index format:"03d"))
+		    append name_params ( keyword  )
+		)
+		
+		name_params  --return
+	)
+	
 
     prefix_array = NormalizePrefixArray prefix_name
 
@@ -130,21 +164,28 @@ function CreateTestLayers prefix_name:#("A",  "B") keyword_pool:#("MainX", "Main
         current_prefix = GetRandomItem prefix_array
         keyword_name = GetRandomItem keyword_pool
         sub_keyword_name = GetRandomItem sub_keyword_pool
+		
+		
         suffix_name = GetRandomItem suffix_pool
 
-        layer_name = BuildLayerName #(
+
+        name_params = #(
             current_prefix,
             keyword_name,
-            sub_keyword_name,
-            suffix_name
+            sub_keyword_name
         )
-
+		
+		appendRanomItem suffix_pool name_params
+		
+		
+        layer_name = BuildLayerName name_params
+		
         layer_ref = CreateLayerIfMissing layer_name
 
         append created_layers layer_ref
     )
 
-    /*  Generates unique layers without prefix.
+    /*  Generates UNIQUE layers without prefix.
         keyword sub_keyword suffix
     */
     for item_index = 1 to 8 do
@@ -155,16 +196,18 @@ function CreateTestLayers prefix_name:#("A",  "B") keyword_pool:#("MainX", "Main
         keyword_name = GetRandomItem keyword_pool
         --sub_keyword_name = GetRandomItem sub_keyword_pool
  		sub_keyword_name = if ( random 0 1) == 0 then GetRandomItem sub_keyword_pool else ""
-       suffix_name = GetRandomItem suffix_pool
+        
 
-        layer_name = BuildLayerName #(
+        name_params = #(
 			prefix_random,
             keyword_name,
-            sub_keyword_name,
-            ( suffix_name + "_" + (formattedPrint item_index format:"03d"))
-           --suffix_name
-        ) delimeter:"_"
-
+            sub_keyword_name
+        )
+		
+		appendRanomItem suffix_pool name_params
+		
+        layer_name = BuildLayerName name_params delimeter:"_-"
+		
         layer_ref = CreateLayerIfMissing layer_name
 
         append created_layers layer_ref
@@ -196,13 +239,13 @@ function generateTestLayers =
 
 	RUN TEST
 
-	DISABLED FOR INCLUDIONG TO OTHEHR TESTS
+	DISABLED FOR INCLUDIONG TO OTHEHR TESTS IN OTEHR FILES
 
+--if LayerManager.count == 1 then
+--	generateTestLayers()
+--
+--LayerKeywordManager = LayerKeywordManager_v()
+--
+--
+--LayerKeywordManager.splitLayerNamesByKeywords()
 --------------------------------------------------------------------------------*/
-if LayerManager.count == 1 then
-	generateTestLayers()
-
-LayerKeywordManager = LayerKeywordManager_v()
-
-
-LayerKeywordManager.splitLayerNamesByKeywords()

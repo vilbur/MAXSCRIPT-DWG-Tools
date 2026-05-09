@@ -52,14 +52,15 @@ function dwgToolsDialog Dialog: width: =
 	if Dialog == undefined then 
 		Dialog 	    = Dialog_v ("DwgTools") width:width debug:true --ini:(getSourceFileName()) 
 	
-	/* DIALOG CONTROLS */ 
-	_Controls   = Dialog.Controls group:("Main Controls")
+	/*------------------------------------------------------------------------------
+		PRESET CONTROLS
+	--------------------------------------------------------------------------------*/
+	_Controls   = Dialog.Controls group:("PRESET")
 	
-	dd_presets = _Controls.control #DROPDOWN "Presets"  items:( for ini_file in ini_files collect getFilenameFile ini_file )
+	preset_name = _Controls.control #EDITTEXT "[Ini Name]" --value:( preset_list.getFullId() + ".items[1]" ) across:1
+	preset_list = _Controls.control #DROPDOWN "[Presets List]"  items:( for ini_file in ini_files collect getFilenameFile ini_file )
 
-	dd_presets.printProps()
-	
-	edit_1 = _Controls.control #EDITTEXT "Ini Name" --value:( dd_presets.getFullId() + ".items[1]" ) across:1
+	--preset_list.printProps()
 	
 	--btn_preset_TEST = _Controls.control #BUTTON "TEST" across:1 width:256 height:32
 	--btn_preset_TEST.Event #PRESSED "tv_rollout.setMixedItemsVisibility false"
@@ -73,25 +74,35 @@ function dwgToolsDialog Dialog: width: =
 	btn_preset_load = _Controls.control #BUTTON "Load Preset" --across:1 width:48
 	btn_preset_delete = _Controls.control #BUTTON "Delete Preset" --across:1 width:48
 	
-	
 	/* IF SELECTED OF DROPDOWN ITEM, THEN UPDATE EDIT TEXT */ 	
-	callback_load_preset = "LAYER_MANAGER_APP.loadStateFromIni ( " + dd_presets.getFullId() + ".selection )"
+	callback_load_preset = "LAYER_MANAGER_APP.loadStateFromIni ( " + preset_list.getFullId() + ".selection )"
 	
-	dd_presets.Event #SELECTED (edit_1.getFullId() + ".text = "+dd_presets.getFullId() + ".items[val]; LAYER_MANAGER_APP.changeIni val;"+callback_load_preset)
+	preset_list.Event #SELECTED (preset_name.getFullId() + ".text = "+preset_list.getFullId() + ".items[val]; LAYER_MANAGER_APP.changeIni val;"+callback_load_preset)
 	
 	/* FIND WRITTEN ITEM IN DROPDOWN */
 	
-	edit_1.Event #CHANGED ( dd_presets.getFullId() + ".selection = findItem ("+dd_presets.getFullId() + ".items) val")
+	preset_name.Event #CHANGED ( preset_list.getFullId() + ".selection = findItem ("+preset_list.getFullId() + ".items) val")
 
-	btn_preset_save.Event	#PRESSED ("LAYER_MANAGER_APP.saveStateToIni(" + edit_1.getFullId() + ".text )")
+	btn_preset_save.Event	#PRESSED ("LAYER_MANAGER_APP.saveStateToIni(" + preset_name.getFullId() + ".text )")
 	btn_preset_load.Event	#PRESSED ( callback_load_preset )
 	btn_preset_delete.Event	#PRESSED ("LAYER_MANAGER_APP.deleteIniFile()")
 	
-
 	
-	LayerKeywordManager = LayerKeywordManager_v()
+	
+	
 
-	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
+	/*------------------------------------------------------------------------------
+		LAYER NAME CONTROLS
+	--------------------------------------------------------------------------------*/
+	_Controls_layer   = Dialog.Controls group:("LAYER NAMES CONFIG") 
+
+	--_Controls_layer.Default #fieldWidth 64 type:#EDITTEXT
+
+	word_delimeter = _Controls_layer.control #EDITTEXT "Word Delimeter" value:"[0-9a-zA-Z]+" fieldWidth:128
+	prefix_match = _Controls_layer.control #EDITTEXT "Prefix Match" value:"\\s+" fieldWidth:128
+	
+	
+	
 
 	--for key in LAYER_NAMES_KEYWORDS.keys do format "key: % \nVALUE: %\n\n" key LAYER_NAMES_KEYWORDS[key]
 
@@ -107,7 +118,7 @@ function dwgToolsDialog Dialog: width: =
 
 	LAYER_MANAGER_APP.Controls [#ROLLOUT]	= tv_rollout
 	
-	LAYER_MANAGER_APP.addControl #DD_PRESETS 	dd_presets
+	LAYER_MANAGER_APP.addControl #DD_PRESETS 	preset_list
 	LAYER_MANAGER_APP.addControl #btn_preset_save 	btn_preset_save
 	LAYER_MANAGER_APP.addControl #btn_preset_load 	btn_preset_load
 	LAYER_MANAGER_APP.addControl #btn_preset_delete 	btn_preset_delete
@@ -117,7 +128,14 @@ function dwgToolsDialog Dialog: width: =
 	/*------------------------------------------------------------------------------
 		TREE VIEW
 	--------------------------------------------------------------------------------*/
+	
+	
+	LayerKeywordManager = LayerKeywordManager_v()
+
+	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
+	
 	layerTreeGenerator()
+	
 	--format "tv_rollout: %\n" tv_rollout
 	AddSubRollout DIALOG_dwgtools.subrollouts_1 tv_rollout
 	

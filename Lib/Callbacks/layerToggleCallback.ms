@@ -18,10 +18,13 @@ function layerToggleCallback state item_id =
 		2:#FREEZE
 	)
 	
-	id_split	= filterString item_id "_"
 	
 	ignore_prefix = ignore_sufix = "*"
-	pattern = arrayToString id_split "*"
+	
+	--id_split	= filterString item_id "_"
+	--pattern = arrayToString id_split "*"
+	
+	pattern = item_id
 	--format "PATTERN: %\n" pattern
 	
 	
