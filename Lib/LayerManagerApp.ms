@@ -13,16 +13,20 @@ struct LayerManagerApp
 	function getIniFiles =
 	(
 		--format "\n"; print "LayerManagerApp.getIniFiles()"
-		ini_dir = maxfilepath
+		ini_dir = maxFilePath
 		
-		if ini_dir == "" do ini_dir = (getDir #temp + "\\")
+		if ini_dir == "" then
+			ini_dir = (getDir #temp + "\\")
 		
-		if current_ini_path == "" do current_ini_path = exporter.getIniFilePath()
+		if current_ini_path == "" then
+			current_ini_path = exporter.getIniFilePath()
 		
 		ini_files = getFiles (ini_dir + "*.ini")
 		
-		if ini_files.count == 0 do append ini_files current_ini_path
-		
+		if ini_files.count == 0 then
+			append ini_files current_ini_path
+
+		--format "ini_dir: %\n" ini_dir
 		ini_files --return
 	),
 	
@@ -33,6 +37,128 @@ struct LayerManagerApp
 			current_ini_path = ini_files[idx]
 			--showUi() 
 		)
+	),
+	
+	/** Update ini file name
+	 */
+	function updateIniFileName filename =
+	(
+		--format "\n"; print "LayerManagerApp.updateIniFileName()"
+		this._setIniPath (filename_new)
+	),
+	
+	/** Save ini state
+	 */
+	function saveStateToIni filename =
+	(
+		--format "\n"; print "LayerManagerApp.saveStateToIni()"
+		--format "filename: %\n" filename
+		--format "ini_dir: %\n" ini_dir
+		
+		filename_new = trimRight (trimLeft filename)
+		
+		if filename_new.count > 0 then 
+			this._setIniPath (filename_new)
+		
+		
+		save_or_update = if filename_new.count > 0 then "SAVE NEW" else "UPDADTE" 
+			
+		if queryBox ( save_or_update + " Preset ?\n\n" + getFilenameFile ( current_ini_path ) ) title:( save_or_update + " PRESET")  then
+			tv_rollout.saveStateToIni this.current_ini_path
+		
+	),
+	
+	/** Get ini path
+	 */
+	function _setIniPath filename =
+	(
+		--format "\n"; print "LayerManagerApp._setIniPath()"
+		--this.current_ini_path = ini_dir + filename + ".ini"
+		this.current_ini_path = ini_dir + (getFilenameFile ( filename )) + ".ini"
+		--format "current_ini_path: %\n" current_ini_path
+	),
+	
+	/** Load ini state
+	 */
+	function loadStateFromIni selected_inifile =
+	(
+		format "\n"; print "LayerManagerApp.loadStateFromIni()"
+		--format "ini_dir: %\n" ini_dir
+		--format "current_ini_path: %\n" current_ini_path
+		/** Get layer names mask
+		 */
+		function getLayerNamesMask items_ids =
+		(
+			format "items_ids: %\n" items_ids
+			/** Join array to string
+			 */
+			fn arrayToString arr delimeter = ( _string = ""; for item in arr do _string += item as string  + delimeter; substring _string 1 (_string.count-delimeter.count))
+			
+			--format "\n"; print "LayerManagerApp.getLayerNamesMask()"
+			layers_masks = for items_id in items_ids collect substituteString items_id "_" "."
+
+			"("+(arrayToString layers_masks "|") +")" -- return
+		)
+		
+		/** Is mask matching
+		 */
+		function isMaskMatching layer_name layers_masks =
+		(
+			--format "\n"; print "LayerManagerApp.isMaskMatching()"
+			regex_options = dotNetClass "System.Text.RegularExpressions.RegexOptions"
+			regex_class = dotNetClass "System.Text.RegularExpressions.Regex"
+			
+			is_enabled = regex_class.IsMatch layer_name layers_masks regex_options.IgnoreCase
+		)
+		
+		
+		if selected_inifile > 0 then
+		(
+
+			--this.current_ini_path = ini_dir + ini_files[selected_inifile] + ".ini"
+			this._setIniPath (ini_files[selected_inifile] )
+
+			--format "this.current_ini_path: %\n" this.current_ini_path
+			/*------------------------------------------------------------------------------
+				LOAD STATE FROM INI
+			--------------------------------------------------------------------------------*/
+			
+			tv_rollout.loadStateFromIni (this.current_ini_path)
+			
+			/*------------------------------------------------------------------------------
+				SET LAYERS STATE
+			--------------------------------------------------------------------------------*/
+			
+			/* GET REGEX MASKS */ 
+			mask_enabled = getLayerNamesMask (tv_rollout.getItemsByState 1)
+			mask_mixed   = getLayerNamesMask (tv_rollout.getItemsByState 2)
+			format "mask_enabled: %\n" mask_enabled
+			format "mask_mixed: %\n" mask_mixed
+			/* GET ALL LAYERS */ 
+			all_layers = for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined collect layer
+
+			/* RESET LAYERS STATE - HIDE & UNFREEZE ALL LAYERS */ 			
+			for layer in all_layers do layer.on = layer.isfrozen = false
+			
+			/* MANAGE EACH LAYER */ 
+			for layer in all_layers do
+			(
+				/* SHOW \ HIDE LAYER */ 
+				layer.on = isMaskMatching layer.name mask_enabled
+				layer.isfrozen = isMaskMatching layer.name mask_mixed
+
+				--if is_frozen then
+				--(
+				--	format "\n"
+				--	format "layer.name: %\n" layer.name
+				--	--format "is_enabled: %\n" is_enabled
+				--	format "is_frozen: %\n" is_frozen
+				--	
+				--)
+			)
+		)
+		else /* MESSAGE IF MISSING PRESET NAME */ 
+			messageBox "Select some preset from dropdown menu" title:"PRESET NOT SELECTED" 
 	),
 	
 	

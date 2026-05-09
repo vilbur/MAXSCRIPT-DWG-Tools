@@ -1,7 +1,7 @@
 clearListener(); print("Cleared in:\n"+getSourceFileName())
 
-global DIALOG_dwgtools
 global tv_rollout
+global DIALOG_dwgtools
 
 global LAYER_MANAGER_APP
 global LAYER_NAMES_KEYWORDS

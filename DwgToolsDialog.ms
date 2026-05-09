@@ -66,19 +66,32 @@ function dwgToolsDialog Dialog: width: =
 	edit_1 = _Controls.control #EDITTEXT "Ini Name" --value:( dd_presets.getFullId() + ".items[1]" ) across:1
 	--edit_2 = _Controls.control #EDITTEXT "Ini Name TEST" across:1
 	
+	btn_TEST = _Controls.control #button "TEST" across:1 width:256 height:32
+	format "btn_TEST: %\n" btn_TEST
+	
 	btn_save_preset = _Controls.control #button "Save Preset" across:1 width:256
 	btn_load_preset = _Controls.control #button "Load Preset" across:1 width:256
 	
 	
 	/* IF SELECTED OF DROPDOWN ITEM, THEN UPDATE EDIT TEXT */ 	
-	dd_presets.Event #SELECTED (edit_1.getFullId() + ".text = "+dd_presets.getFullId() + ".items[val]; LAYER_MANAGER_APP.changeIni val")
+	callback_load_preset = "LAYER_MANAGER_APP.loadStateFromIni ( " + dd_presets.getFullId() + ".selection )"
 	
-	/* FIND WRITTEN ITEM IN DROPDOWN */ 
+	dd_presets.Event #SELECTED (edit_1.getFullId() + ".text = "+dd_presets.getFullId() + ".items[val]; LAYER_MANAGER_APP.changeIni val;"+callback_load_preset)
+	
+	/* FIND WRITTEN ITEM IN DROPDOWN */
+	
+	--edit_1.Event #CHANGED ( dd_presets.getFullId() + ".selection = findItem ("+dd_presets.getFullId() + ".items) val; LAYER_MANAGER_APP.updateIniFileName val")
 	edit_1.Event #CHANGED ( dd_presets.getFullId() + ".selection = findItem ("+dd_presets.getFullId() + ".items) val")
 
 	
-	btn_save_preset.Event #PRESSED "tv_rollout.saveStateToIni layer_manager_app.current_ini_path"
-	btn_load_preset.Event #PRESSED "tv_rollout.loadStateFromIni layer_manager_app.current_ini_path"
+	--btn_save_preset.Event #PRESSED "tv_rollout.saveStateToIni   layer_manager_app.current_ini_path"
+	--btn_load_preset.Event #PRESSED "tv_rollout.loadStateFromIni layer_manager_app.current_ini_path"
+	
+	btn_save_preset.Event #PRESSED ("LAYER_MANAGER_APP.saveStateToIni  (" + edit_1.getFullId() + ".text )")
+	btn_load_preset.Event #PRESSED ( callback_load_preset )
+	
+	
+	btn_TEST.Event #PRESSED "tv_rollout.setMixedItemsVisibility false"
 	
 	
 	LayerKeywordManager = LayerKeywordManager_v()
