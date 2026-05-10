@@ -19,7 +19,7 @@ struct LayerKeywordManager_v
 	/* required */
 	
 	/* properties */
-	
+	freezed_layers_unique = true,
 	
 	/* private */
 	/* dependency */
@@ -35,6 +35,7 @@ struct LayerKeywordManager_v
 		
 		keywords	= Dictionary #STRING -- KEY: VALUE:
 		
+		/* LOOP EACH LAYER */ 
 		for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined and layer.name != "0" do
 		(
 			--format "\n"
@@ -49,9 +50,11 @@ struct LayerKeywordManager_v
 			
 			prefix = layer_name_split[1]
 
-			
+			/*------------------------------------------------------------------------------
+				IF PREFIX EXITS
+			--------------------------------------------------------------------------------*/
 			/* IF LAYER NAME CAN BE SPLITTED */ 
-			if prefix != undefined then
+			if not layer.isfrozen and prefix != undefined then
 			(
 				prefix_mask_full_string = trimRight ( trimLeft prefix_mask "^$" )  "^$"
 				
@@ -64,7 +67,12 @@ struct LayerKeywordManager_v
 				--format "prefix_match: %\n" prefix_match
 			)
 			
-		
+			/*------------------------------------------------------------------------------
+				IF PREFIX MATCH MASK
+			--------------------------------------------------------------------------------*/
+			
+			
+			--if prefix_match == true and layer_name_split.count > 1 then
 			if prefix_match == true and layer_name_split.count > 1 then
 			(
 				keywords_nested = keywords
@@ -83,8 +91,8 @@ struct LayerKeywordManager_v
 				)
 			)
 			else
-				keywords[layer_name] = Dictionary #STRING
-				--keywords[layer_name] = #UNIQUE
+				--keywords[layer_name] = Dictionary #STRING
+				keywords[layer_name] = if layer.isfrozen then #FREEZED else #UNIQUE
 			
 			--format "layer: %\n" layer_name
 		)

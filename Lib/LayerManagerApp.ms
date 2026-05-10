@@ -162,7 +162,7 @@ struct LayerManagerApp
 			(
 				layer.on = false
 				
-				layer.isfrozen = false
+				--layer.isfrozen = false
 			)
 			
 			/*------------------------------------------------------------------------------

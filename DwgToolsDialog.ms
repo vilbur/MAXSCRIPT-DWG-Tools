@@ -106,6 +106,7 @@ function dwgToolsDialog Dialog: width: =
 	btn_word_delimeter	= _Controls_cfg.control #EDITTEXT "Word Delimeter"	value:"\\s+" --fieldWidth:128
 	btn_prefix_match	= _Controls_cfg.control #EDITTEXT "Prefix Match"	value:"[0-9a-zA-Z]+" --fieldWidth:128
 	
+	cbx_ignore_freezed	= _Controls_cfg.control #CHECKBOX "Ignore Freezed Layers"	value:true --fieldWidth:128
 	
 	
 	
@@ -125,6 +126,7 @@ function dwgToolsDialog Dialog: width: =
 	
 	LAYER_MANAGER_APP.addControl #btn_word_delimeter 	btn_word_delimeter
 	LAYER_MANAGER_APP.addControl #btn_prefix_match 	btn_prefix_match
+	LAYER_MANAGER_APP.addControl #cbx_ignore_freezed 	cbx_ignore_freezed
 	
 	
 	/*------------------------------------------------------------------------------

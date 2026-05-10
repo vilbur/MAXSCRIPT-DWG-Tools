@@ -16,12 +16,12 @@ function layerTreeGenerator =
 	
 		local is_updating = false
 		
-		local locked_ids = #() 
-		--local locked_ids = #("A", "mainx_suba_foo") 
+		local locked_ids = #()
+		local tristate_ids = #()
 		
 		-- Master dictionary to remember the state of all items even if hidden
 		local node_states = Dictionary #string
-		local show_mixed_items = true
+		local hidden_ids = #() -- Replaced show_mixed_items with a hidden items array
 		
 		-- Customizable Sizes
 		local checkbox_size = 18
@@ -31,7 +31,7 @@ function layerTreeGenerator =
 		-- Custom Multi-Selection Variables
 		local selected_nodes = #()
 		local last_selected_node = undefined
-		local context_node = undefined -- FIX: Declared at rollout level to avoid scoping errors
+		local context_node = undefined
 		
 		local bg_color_obj = (dotNetClass "System.Drawing.Color").FromArgb 40 40 40
 		local highlight_color_obj = (dotNetClass "System.Drawing.Color").FromArgb 70 130 180
@@ -52,7 +52,6 @@ function layerTreeGenerator =
 			local current_id = node.Tag as string
 			local color_class = dotNetClass "System.Drawing.Color"
 			
-			-- Locked items get a specific dark/dimmed color
 			if (findItem locked_ids current_id > 0) then
 			(
 				node.ForeColor = color_class.FromArgb 100 100 100
@@ -84,30 +83,28 @@ function layerTreeGenerator =
 			local pen_border = dotNetObject "System.Drawing.Pen" border_color 1
 			local brush_fill = dotNetObject "System.Drawing.SolidBrush" fill_color
 			
-			-- drawBase now correctly accepts brush and pen as parameters
 			fn drawBase b_bg p_border size =
 			(
 				local bmp = dotNetObject "System.Drawing.Bitmap" size size
 				local g = (dotNetClass "System.Drawing.Graphics").FromImage bmp
 				
 				g.FillRectangle b_bg 0 0 size size
-				-- dynamically scale the rectangle based on size
 				g.DrawRectangle p_border 2 2 (size - 5) (size - 5) 
 				#(bmp, g)
 			)
 			
-			-- State 0: Unchecked (Empty Box)
+			-- State 0: Unchecked
 			local base0 = drawBase brush_bg pen_border cb_size
 			img_list.Images.Add base0[1]
 			
-			-- State 1: Checked (Solid Inner Box)
+			-- State 1: Checked
 			local base1 = drawBase brush_bg pen_border cb_size
 			local fill_margin = (cb_size / 4) as integer
 			local fill_size = cb_size - (fill_margin * 2)
 			base1[2].FillRectangle brush_fill fill_margin fill_margin fill_size fill_size 
 			img_list.Images.Add base1[1]
 			
-			-- State 2: Mixed / Indeterminate (Horizontal Dash)
+			-- State 2: Mixed
 			local base2 = drawBase brush_bg pen_border cb_size
 			local dash_margin = (cb_size / 5) as integer
 			local dash_width = cb_size - (dash_margin * 2)
@@ -162,19 +159,26 @@ function layerTreeGenerator =
 					node_states[current_id] = current_state
 				)
 				
-				-- Hide mixed items if toggled off
-				if (not show_mixed_items) and (current_state == 2) then continue
+				-- Skip building this node if it is in the hidden_ids array
+				if (findItem hidden_ids current_id > 0) then continue
 				
 				local new_node = dotNetObject "System.Windows.Forms.TreeNode" k
 				new_node.Tag = current_id 
 				
-				-- Setup node state and color
 				new_node.StateImageIndex = current_state
 				applyNodeColor new_node current_state
 				
-				if sub_dict.keys.count > 0 then 
+				if (isKindOf sub_dict Dictionary) then
 				(
-					populateTreeNode sub_dict new_node.Nodes current_id
+					if sub_dict.keys.count > 0 then 
+						populateTreeNode sub_dict new_node.Nodes current_id
+				)
+				else if sub_dict == #FREEZED then
+				(
+					appendIfUnique tristate_ids current_id
+					node_states[current_id] = 2
+					new_node.StateImageIndex = 2
+					applyNodeColor new_node 2
 				)
 				
 				parent_collection.Add new_node
@@ -209,16 +213,53 @@ function layerTreeGenerator =
 
 		/* --- REMOTE API FUNCTIONS --- */
 
-		/** * Toggles visibility for mixed items and rebuilds UI.
+		/** * Expands only nodes that are in True (1) state.
 		 */
-		function toggleMixedItemsVisibility =
+		function expandTrueNodes =
 		(
-			show_mixed_items = not show_mixed_items
+			tv.CollapseAll()
+			local all_nodes = getAllNodes tv.Nodes
+			
+			for n in all_nodes do
+			(
+				if n.StateImageIndex == 1 then
+				(
+					-- EnsureVisible expands all parents to reveal this node
+					n.EnsureVisible()
+				)
+			)
+		)
+
+		/** * Hides currently selected items and rebuilds the tree visually.
+		 */
+		function hideSelectedItems =
+		(
+			if selected_nodes.count > 0 then
+			(
+				for n in selected_nodes do
+				(
+					appendIfUnique hidden_ids (n.Tag as string)
+				)
+				
+				tv.BeginUpdate()
+				clearCustomSelection()
+				tv.Nodes.Clear()
+				if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
+				expandTrueNodes()
+				tv.EndUpdate()
+			)
+		)
+
+		/** * Clears the hidden filter and rebuilds the tree.
+		 */
+		function unhideAllItems =
+		(
+			hidden_ids = #()
 			tv.BeginUpdate()
 			clearCustomSelection()
 			tv.Nodes.Clear()
 			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
-			tv.ExpandAll()
+			expandTrueNodes()
 			tv.EndUpdate()
 		)
 
@@ -251,8 +292,6 @@ function layerTreeGenerator =
 		function expandAllNodes = (tv.ExpandAll())
 		function collapseAllNodes = (tv.CollapseAll())
 
-		/** * Checks items that match any of the provided string masks (wildcards supported) to a specific state.
-		 */
 		function checkByMasks masks target_state =
 		(
 			is_updating = true
@@ -276,13 +315,10 @@ function layerTreeGenerator =
 			is_updating = false
 		)
 
-		/** * Saves the current states (0, 1, 2) of all nodes to an INI file.
-		 */
 		function saveStateToIni ini_path =
 		(
 			format "\n"; print "layerTreeGenerator.saveStateToIni()"
 			format "ini_path: %\n" ini_path
-			
 			
 			deleteFile ini_path
 			
@@ -292,8 +328,6 @@ function layerTreeGenerator =
 			)
 		)
 
-		/** * Loads integer states from an INI file, fires callbacks for changed items, and rebuilds tree.
-		 */
 		function loadStateFromIni ini_path =
 		(
 			format "\n"; print "layerTreeGenerator.loadStateFromIni()"
@@ -316,17 +350,17 @@ function layerTreeGenerator =
 					if old_val != int_val then
 					(
 						node_states[k] = int_val
-						-- Fire callback for items modified by the INI load
 						if layerToggleCallback != undefined then layerToggleCallback int_val k
 					)
 				)
 			)
 			
-			-- Rebuild tree to apply loaded states visually
 			clearCustomSelection()
 			tv.Nodes.Clear()
 			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
-			tv.ExpandAll()
+			
+			-- Expand ONLY true items upon load
+			expandTrueNodes()
 			
 			tv.EndUpdate()
 			is_updating = false
@@ -337,7 +371,6 @@ function layerTreeGenerator =
 
 		on tv BeforeSelect arg do
 		(
-			-- Makes native items 'unselectable' so our custom selection logic works cleanly
 			arg.Cancel = true
 		)
 
@@ -347,7 +380,7 @@ function layerTreeGenerator =
 			if arg.Button == arg.Button.Right then
 			(
 				local hit_info = tv.HitTest arg.X arg.Y
-				context_node = hit_info.Node -- FIX: Now uses rollout-level variable
+				context_node = hit_info.Node 
 				
 				local m_menu = dotNetObject "System.Windows.Forms.ContextMenu"
 				
@@ -356,19 +389,24 @@ function layerTreeGenerator =
 				local item_mixed  	= m_menu.MenuItems.Add("Set All to Mixed")
 				local item_sep1     = m_menu.MenuItems.Add("-")
 				
-				local vis_string    = if show_mixed_items then "Hide Mixed Items" else "Show Mixed Items"
-				local item_tog_mix  = m_menu.MenuItems.Add(vis_string)
+				local item_hide_sel = m_menu.MenuItems.Add("Hide Selected")
+				local item_unhide_all = m_menu.MenuItems.Add("Unhide All")
 				local item_sep2     = m_menu.MenuItems.Add("-")
 				
-				local item_expand 	= m_menu.MenuItems.Add("Expand Selected/All")
-				local item_collapse	= m_menu.MenuItems.Add("Collapse Selected/All")
+				local expand_title = if selected_nodes.count > 1 then "Expand Selected" else "Expand All"
+				local collapse_title = if selected_nodes.count > 1 then "Collapse Selected" else "Collapse All"
+				
+				local item_expand 	= m_menu.MenuItems.Add(expand_title)
+				local item_collapse	= m_menu.MenuItems.Add(collapse_title)
 				local item_sep3     = m_menu.MenuItems.Add("-")
 				local item_select_same = m_menu.MenuItems.Add("Select By Same State")
 				
 				function onCheck   	s e = (tv_rollout.checkAll(1))
 				function onUnCheck  s e = (tv_rollout.checkAll(0))
 				function onMixed    s e = (tv_rollout.checkAll(2))
-				function onTogMix   s e = (tv_rollout.toggleMixedItemsVisibility())
+				
+				function onHideSel  s e = (tv_rollout.hideSelectedItems())
+				function onUnhideAll s e = (tv_rollout.unhideAllItems())
 				
 				function onExpand  	s e = 
 				(
@@ -411,9 +449,7 @@ function layerTreeGenerator =
 					(
 						local target_state = ref_node.StateImageIndex
 						
-						-- Clear selection
 						clearCustomSelection()
-						
 						local all_nodes = tv_rollout.getAllNodes tv_rollout.tv.Nodes
 						
 						for n in all_nodes do
@@ -435,7 +471,8 @@ function layerTreeGenerator =
 				dotNet.addEventHandler item_check	"Click" onCheck
 				dotNet.addEventHandler item_uncheck	"Click" onUnCheck
 				dotNet.addEventHandler item_mixed	"Click" onMixed
-				dotNet.addEventHandler item_tog_mix	"Click" onTogMix
+				dotNet.addEventHandler item_hide_sel "Click" onHideSel
+				dotNet.addEventHandler item_unhide_all "Click" onUnhideAll
 				dotNet.addEventHandler item_expand	"Click" onExpand
 				dotNet.addEventHandler item_collapse "Click" onCollapse
 				dotNet.addEventHandler item_select_same "Click" onSelectSame
@@ -454,20 +491,17 @@ function layerTreeGenerator =
 					local current_node = hit_info.Node
 					local locked_color_argb = ((dotNetClass "System.Drawing.Color").FromArgb 100 100 100).ToArgb()
 					
-					-- Only toggle if it's not locked
 					if current_node.ForeColor.ToArgb() != locked_color_argb then
 					(
 						is_updating = true 
 						
 						local new_state = 0
 						
-						-- If CTRL is pressed, toggle to Mixed(2). Otherwise, toggle True(1)/False(0).
 						if keyboard.controlPressed then
 							new_state = if current_node.StateImageIndex == 2 then 0 else 2
 						else
 							new_state = if current_node.StateImageIndex == 1 then 0 else 1
 							
-						-- Apply state change to all selected nodes if the clicked node is selected
 						if (findItem selected_nodes current_node > 0) then
 						(
 							for sn in selected_nodes where sn.ForeColor.ToArgb() != locked_color_argb do
@@ -496,7 +530,6 @@ function layerTreeGenerator =
 					
 					if is_shift and last_selected_node != undefined then
 					(
-						-- Shift Select
 						if not is_ctrl then
 						(
 							for n in selected_nodes do n.BackColor = bg_color_obj
@@ -521,7 +554,6 @@ function layerTreeGenerator =
 					)
 					else if is_ctrl then
 					(
-						-- Ctrl Select (Toggle)
 						local idx = findItem selected_nodes current_node
 						if idx > 0 then
 						(
@@ -537,7 +569,6 @@ function layerTreeGenerator =
 					)
 					else
 					(
-						-- Normal Click
 						for n in selected_nodes do n.BackColor = bg_color_obj
 						selected_nodes = #(current_node)
 						current_node.BackColor = highlight_color_obj
@@ -577,11 +608,9 @@ function layerTreeGenerator =
 			tv.Nodes.Clear()
 			tv.Sorted = true
 			
-			-- Apply dynamic fonts
 			tv.Font = dotNetObject "System.Drawing.Font" "Arial" font_size
 			tv.ItemHeight = (amax #(checkbox_size + line_padding, font_size + line_padding)) as integer
 
-			-- Disable native checkboxes and inject dynamic Tri-State images
 			tv.CheckBoxes = false
 			tv.StateImageList = createTriStateImageList checkbox_size
 			
@@ -590,7 +619,9 @@ function layerTreeGenerator =
 			
 			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
 			
-			tv.ExpandAll()
+			-- Expand ONLY true items upon initialization
+			expandTrueNodes()
+			
 			tv.ResumeLayout()
 		)
 	)

@@ -2,7 +2,7 @@
  */
 function layerToggleCallback state item_id =
 (
-    --format "layerToggleCallback State: % | Item ID: %\n" state item_id
+    format "layerToggleCallback State: % | Item ID: %\n" state item_id
 
 	/** Join array to string
 	 */
@@ -34,7 +34,7 @@ function layerToggleCallback state item_id =
 		if matchPattern layer.name pattern:( pattern ) then
 		--if matchPattern layer.name pattern:( pattern ) then
 		(
-			layer.on = mode == #SHOW 
+			layer.on = mode == #SHOW and mode != #FREEZE
 			
 			layer.isfrozen = mode == #FREEZE
 		)
