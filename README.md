@@ -5,4 +5,5 @@
 [MAXSCRIPT-UI-framework](https://github.com/vilbur/MAXSCRIPT-UI-framework)  
 
 
-![ Title ](Doc/ui.jpg "DWG-Tools")  
+![ UI ](Doc/ui.jpg "DWG-Tools")  
+![ EXAMPLE ](Doc/example.gif "example")  

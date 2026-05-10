@@ -126,17 +126,16 @@ function dictionaryFactory variation:undefined =
 
 
 
-
-
-DictionaryCompressor = DictionaryCompressor_v() --dictionary:dict_test
-
 dict_test = dictionaryFactory variation:( Dictionary #( 2, 2 ) #( 4, 2 )  )
 
-print "\n=== ORIGINAL ===\n"
---for key in dict_test.keys do format "key: % \nVALUE: %\n\n" key dict_test[key]
-DictionaryCompressor.printDictionary(dict_test)
 
-compressed_dict = DictionaryCompressor.compressDictionary(dict_test)
 
-print "\n=== COMPRESSED ===\n"
+DictionaryCompressor = DictionaryCompressor_v()
+
+format "\n======================= ORIGINAL ========================\n\n"
+DictionaryCompressor.printDictionary dict_test
+
+compressed_dict = DictionaryCompressor.compressDictionary (dict_test)
+
+format "\n======================== COMPRESSED ========================\n\n"
 DictionaryCompressor.printDictionary compressed_dict

@@ -140,11 +140,16 @@ function dwgToolsDialog Dialog: width: =
 
 	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
 	
-	--LAYER_NAMES_KEYWORDS_COMPRESSED = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
-	LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
+	DictionaryCompressor = DictionaryCompressor_v() --dictionary:dict_test
+	print "\n======================== ORIGINAL ========================\n"
+
+	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
+
+	--LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
+	print "\n======================== COMPRESSED ========================\n"
+
+	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
 	
-	
-	--( DictionaryCompressor_v()).printDictionary LAYER_NAMES_KEYWORDS_COMPRESSED
 	
 	--layerTreeGenerator( dialog_height  )
 	layerTreeGenerator()

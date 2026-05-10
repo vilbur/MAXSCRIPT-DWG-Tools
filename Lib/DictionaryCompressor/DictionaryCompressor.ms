@@ -1,6 +1,7 @@
 /*  Compresses nested dictionaries by merging single-child branches.
     Deepest values must be strings.
 	
+		
 	=== ORIGINAL ===
 	
 	[Layer_1]
@@ -77,7 +78,10 @@ struct DictionaryCompressor_v
 	/*  Recursively compresses dictionary hierarchy.
 	    Merges branches containing only one child.
 	*/
-	function compressDictionary source_dict =
+	/*  Recursively compresses dictionary hierarchy.
+	    Merges branches containing only one child.
+	*/
+	function compressDictionary source_dict is_root_level:true =
 	(
 		result_dict = Dictionary #string
 
@@ -87,7 +91,7 @@ struct DictionaryCompressor_v
 
 			if (isKindOf val Dictionary) then
 			(
-				compressed_child = this.compressDictionary val
+				compressed_child = this.compressDictionary val is_root_level:false
 
 				if (compressed_child.keys.Count == 1) then
 				(
@@ -96,7 +100,15 @@ struct DictionaryCompressor_v
 
 					merged_key = this.joinKeys current_key child_key
 
-					result_dict[merged_key] = child_value
+					if (is_root_level) then
+					(
+						result_dict[current_key] = Dictionary #string
+						result_dict[merged_key] = child_value
+					)
+					else
+					(
+						result_dict[merged_key] = child_value
+					)
 				)
 				else
 				(
