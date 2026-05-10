@@ -13,4 +13,4 @@
 
 ## 3NP  
 
-![ EXAMPLE ](Doc/3np.gif "example")  
+![ EXAMPLE ](Doc/3np.jpg "example")  
