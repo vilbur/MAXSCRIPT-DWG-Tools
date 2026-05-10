@@ -9,14 +9,12 @@ filein( getFilenamePath(getSourceFileName()) + "/../DictionaryCompressor.ms" )	-
 function nestedDictionaryFactory &root_dict level:1 max_level:undefined root_index:undefined  =
 (
 	--format "\n"; print "DictionaryFactory_v.nestedDictionaryFactory()"
-	
-	--format "\n"
-	--format "root_index: %\n" root_index
-	--format "level: %\n" level
+
 	
 	--levels = #( "Prefix", "Keyword", "Prop", "Suffix", "Unique"  )
-	--levels = #( "Prefix", "Keyword", "Prop", "Suffix" )
-	levels = #( "Prefix", "Keyword", "Suffix" )
+	levels = #( "Prefix", "Keyword", "Prop", "Suffix" )
+	--levels = #( "Prefix", "Keyword", "Props" )
+	--levels = #( "Prefix", "Keyword" )
 	
 	if max_level == undefined then
 		max_level = levels.count
@@ -32,15 +30,6 @@ function nestedDictionaryFactory &root_dict level:1 max_level:undefined root_ind
 		(
 			/* NUMBER OF ROOT ITEMS -- Same count as available levels */ 
 			count = levels.count
-			
-			/* LAST ROOT ITEM - modify count of nested items */
-			--format "level == levels.count: %\n" (level == levels.count)
-			--if level == levels.count then
-			--(
-			--	count = level
-			----	count = 1
-			--	
-			--)
 			
 		)
 		/* MAX COUNT OF NESTED ITEMS */ 
@@ -69,29 +58,21 @@ function nestedDictionaryFactory &root_dict level:1 max_level:undefined root_ind
 	
 			key = levels[level]
 	
-			wtf = root_index == levels.count --and i == levels.count
-		
 			key_1 = key
 		
+			/* UNIQUE NAME */ 
+			key_1 += "_" + root_index as string
+			key_1 += "_" + level as string
+			key_1 += "_" + i as string
 		
-			--if root_index != undefined then
-				key_1 += "_" + root_index as string
-			--else
-				key_1 += "_" + level as string
-			--key_1 += "_" + is_first_level as string
-				key_1 += "_" + i as string
-			
 			
 			nested_dict =  Dictionary #STRING
 				
 			root_dict[ key_1 ] = nested_dict
 	
 			max_level_next = if is_first_level then i else max_level
-			
-			
-			--root_index_next = if is_first_level then i else undefined
-			--root_index_next = if is_first_level then i else undefined
-			root_index_next = if is_first_level then i else undefined
+
+			root_index_next = if is_first_level then i else root_index
 
 			
 			nested_dict = nestedDictionaryFactory(nested_dict) level:level_next max_level:max_level_next root_index:root_index_next
