@@ -83,7 +83,8 @@ struct LayerKeywordManager_v
 				)
 			)
 			else
-				keywords[layer_name] = #UNIQUE
+				keywords[layer_name] = Dictionary #STRING
+				--keywords[layer_name] = #UNIQUE
 			
 			--format "layer: %\n" layer_name
 		)

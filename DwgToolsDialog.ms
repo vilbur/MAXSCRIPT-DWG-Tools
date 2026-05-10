@@ -58,17 +58,13 @@ function dwgToolsDialog Dialog: width: =
 	--------------------------------------------------------------------------------*/
 	_Controls   = Dialog.Controls group:("LAYERS PRESET")
 	
-	
+	/* PRESET NAME */ 
 	preset_name = _Controls.control #EDITTEXT "[Ini Name]" --value:( preset_list.getFullId() + ".items[1]" ) across:1
+	
+	/* PRESET DROPDOWN */ 
 	preset_list = _Controls.control #DROPDOWN "[Presets List]"  items:( for ini_file in ini_files collect getFilenameFile ini_file )
 
-	--preset_list.printProps()
-	
-	--btn_preset_TEST = _Controls.control #BUTTON "TEST" across:1 width:256 height:32
-	--btn_preset_TEST.Event #PRESSED "tv_rollout.setMixedItemsVisibility false"
-	--format "btn_preset_TEST: %\n" btn_preset_TEST
-	
-	--_Controls.Defaults #(#across, 3, #width, 96 ) type:#BUTTON
+
 	_Controls.Default #across 3 type:#BUTTON
 	_Controls.Default #width 72 type:#BUTTON
 	
@@ -79,7 +75,7 @@ function dwgToolsDialog Dialog: width: =
 	/* IF SELECTED OF DROPDOWN ITEM, THEN UPDATE EDIT TEXT */ 	
 	callback_load_preset = "LAYER_MANAGER_APP.loadStateFromIni ( " + preset_list.getFullId() + ".selection )"
 	
-	preset_list.Event #SELECTED (preset_name.getFullId() + ".text = "+preset_list.getFullId() + ".items[val]; LAYER_MANAGER_APP.changeIni val;"+callback_load_preset)
+	preset_list.Event #SELECTED (preset_name.getFullId() + ".text = "+preset_list.getFullId() + ".items[val]; LAYER_MANAGER_APP.changeIni val;" )
 	
 	/* FIND WRITTEN ITEM IN DROPDOWN */
 	
@@ -141,12 +137,12 @@ function dwgToolsDialog Dialog: width: =
 	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
 	
 	DictionaryCompressor = DictionaryCompressor_v() --dictionary:dict_test
-	print "\n======================== ORIGINAL ========================\n"
+	--print "\n======================== ORIGINAL ========================\n"
 
 	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
 
 	LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
-	print "\n======================== COMPRESSED ========================\n"
+	--print "\n======================== COMPRESSED ========================\n"
 
 	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
 	

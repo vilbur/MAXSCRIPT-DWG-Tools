@@ -10,9 +10,9 @@ function layerTreeGenerator =
 	
 	try(destroyDialog tv_rollout)catch()
 
-	rollout tv_rollout "Layers Manager" width:400 --height:1140
+	rollout tv_rollout "Layers Manager" width:400 height:1140
 	(
-		dotNetControl tv "System.Windows.Forms.TreeView" width:380 height:512 pos:[0,10]
+		dotNetControl tv "System.Windows.Forms.TreeView" width:380 height:1400 pos:[10,10]
 	
 		local is_updating = false
 		
@@ -31,6 +31,8 @@ function layerTreeGenerator =
 		-- Custom Multi-Selection Variables
 		local selected_nodes = #()
 		local last_selected_node = undefined
+		local context_node = undefined -- FIX: Declared at rollout level to avoid scoping errors
+		
 		local bg_color_obj = (dotNetClass "System.Drawing.Color").FromArgb 40 40 40
 		local highlight_color_obj = (dotNetClass "System.Drawing.Color").FromArgb 70 130 180
 
@@ -130,7 +132,8 @@ function layerTreeGenerator =
 		 */
 		function getAllNodes parent_collection out_array:undefined =
 		(
-			if out_array == undefined do out_array = #()
+			if out_array == undefined then out_array = #()
+			
 			for i = 0 to parent_collection.Count - 1 do
 			(
 				local current_node = parent_collection.Item[i]
@@ -147,17 +150,20 @@ function layerTreeGenerator =
 			for k in dict.keys do
 			(
 				local sub_dict = dict[k]
-				
-				local current_id = if parent_id_path == "" then k else (parent_id_path + " " + k)
+				local current_id = if parent_id_path == "" then k else (parent_id_path + "_" + k)
 				
 				local current_state = 0
 				if hasDictValue node_states current_id then 
+				(
 					current_state = node_states[current_id]
+				)
 				else
+				(
 					node_states[current_id] = current_state
+				)
 				
 				-- Hide mixed items if toggled off
-				if (not show_mixed_items) and (current_state == 2) do continue
+				if (not show_mixed_items) and (current_state == 2) then continue
 				
 				local new_node = dotNetObject "System.Windows.Forms.TreeNode" k
 				new_node.Tag = current_id 
@@ -166,9 +172,10 @@ function layerTreeGenerator =
 				new_node.StateImageIndex = current_state
 				applyNodeColor new_node current_state
 				
-				/* ADD NESTED ITEMS */ 
-				if (isKindOf sub_dict Dictionary) then
-					if sub_dict.keys.count > 0 do (populateTreeNode sub_dict new_node.Nodes current_id)
+				if sub_dict.keys.count > 0 then 
+				(
+					populateTreeNode sub_dict new_node.Nodes current_id
+				)
 				
 				parent_collection.Add new_node
 			)
@@ -186,10 +193,10 @@ function layerTreeGenerator =
 				
 				if child_node.ForeColor.ToArgb() != locked_color_argb then
 				(
-					if child_node.StateImageIndex != target_state do
+					if child_node.StateImageIndex != target_state then
 					(
 						updateNodeState child_node target_state
-						if layerToggleCallback != undefined do layerToggleCallback target_state (child_node.Tag as string)
+						if layerToggleCallback != undefined then layerToggleCallback target_state (child_node.Tag as string)
 					)
 					setChildrenCheckboxState child_node target_state 
 				)
@@ -210,8 +217,7 @@ function layerTreeGenerator =
 			tv.BeginUpdate()
 			clearCustomSelection()
 			tv.Nodes.Clear()
-			if layer_names_keywords != undefined do 
-				populateTreeNode layer_names_keywords tv.Nodes ""
+			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
 			tv.ExpandAll()
 			tv.EndUpdate()
 		)
@@ -232,10 +238,10 @@ function layerTreeGenerator =
 			
 			for n in all_nodes where n.ForeColor.ToArgb() != locked_color_argb do
 			(
-				if n.StateImageIndex != target_state do
+				if n.StateImageIndex != target_state then
 				(
 					updateNodeState n target_state
-					if layerToggleCallback != undefined do layerToggleCallback target_state (n.Tag as string)
+					if layerToggleCallback != undefined then layerToggleCallback target_state (n.Tag as string)
 				)
 			)
 			tv.EndUpdate()
@@ -260,10 +266,10 @@ function layerTreeGenerator =
 				local node_id = n.Tag as string
 				for m in masks where (matchPattern node_id pattern:m) do is_matched = true
 				
-				if is_matched and n.StateImageIndex != target_state do
+				if is_matched and n.StateImageIndex != target_state then
 				(
 					updateNodeState n target_state
-					if layerToggleCallback != undefined do layerToggleCallback target_state node_id
+					if layerToggleCallback != undefined then layerToggleCallback target_state node_id
 				)
 			)
 			tv.EndUpdate()
@@ -276,6 +282,9 @@ function layerTreeGenerator =
 		(
 			format "\n"; print "layerTreeGenerator.saveStateToIni()"
 			format "ini_path: %\n" ini_path
+			
+			
+			deleteFile ini_path
 			
 			for k in node_states.keys do
 			(
@@ -290,9 +299,7 @@ function layerTreeGenerator =
 			format "\n"; print "layerTreeGenerator.loadStateFromIni()"
 			format "ini_path: %\n" ini_path
 			
-			if not (doesFileExist ini_path) do return false
-			
-			checkAll false
+			if not (doesFileExist ini_path) then return false
 			
 			is_updating = true
 			tv.BeginUpdate()
@@ -303,14 +310,14 @@ function layerTreeGenerator =
 				local val = getINISetting ini_path "LayerStates" k
 				local int_val = val as integer
 				
-				if int_val != undefined do
+				if int_val != undefined then
 				(
 					local old_val = if hasDictValue node_states k then node_states[k] else 0
-					if old_val != int_val do
+					if old_val != int_val then
 					(
 						node_states[k] = int_val
 						-- Fire callback for items modified by the INI load
-						if layerToggleCallback != undefined do layerToggleCallback int_val k
+						if layerToggleCallback != undefined then layerToggleCallback int_val k
 					)
 				)
 			)
@@ -318,11 +325,8 @@ function layerTreeGenerator =
 			-- Rebuild tree to apply loaded states visually
 			clearCustomSelection()
 			tv.Nodes.Clear()
-			if layer_names_keywords != undefined do 
-				populateTreeNode layer_names_keywords tv.Nodes ""
-				
-				
-			--tv.ExpandAll()
+			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
+			tv.ExpandAll()
 			
 			tv.EndUpdate()
 			is_updating = false
@@ -340,8 +344,11 @@ function layerTreeGenerator =
 		on tv NodeMouseClick arg do
 		(
 			-- Right-Click Menu
-			if arg.Button == arg.Button.Right do
+			if arg.Button == arg.Button.Right then
 			(
+				local hit_info = tv.HitTest arg.X arg.Y
+				context_node = hit_info.Node -- FIX: Now uses rollout-level variable
+				
 				local m_menu = dotNetObject "System.Windows.Forms.ContextMenu"
 				
 				local item_check  	= m_menu.MenuItems.Add("Check All (True)")
@@ -353,15 +360,77 @@ function layerTreeGenerator =
 				local item_tog_mix  = m_menu.MenuItems.Add(vis_string)
 				local item_sep2     = m_menu.MenuItems.Add("-")
 				
-				local item_expand 	= m_menu.MenuItems.Add("Expand All")
-				local item_collapse	= m_menu.MenuItems.Add("Collapse All")
+				local item_expand 	= m_menu.MenuItems.Add("Expand Selected/All")
+				local item_collapse	= m_menu.MenuItems.Add("Collapse Selected/All")
+				local item_sep3     = m_menu.MenuItems.Add("-")
+				local item_select_same = m_menu.MenuItems.Add("Select By Same State")
 				
 				function onCheck   	s e = (tv_rollout.checkAll(1))
 				function onUnCheck  s e = (tv_rollout.checkAll(0))
 				function onMixed    s e = (tv_rollout.checkAll(2))
 				function onTogMix   s e = (tv_rollout.toggleMixedItemsVisibility())
-				function onExpand  	s e = (tv_rollout.expandAllNodes())
-				function onCollapse s e = (tv_rollout.collapseAllNodes())
+				
+				function onExpand  	s e = 
+				(
+					if selected_nodes.count > 1 then
+					(
+						for n in selected_nodes do n.ExpandAll()
+					)
+					else
+					(
+						tv_rollout.expandAllNodes()
+					)
+				)
+				
+				function onCollapse s e = 
+				(
+					if selected_nodes.count > 1 then
+					(
+						for n in selected_nodes do n.Collapse()
+					)
+					else
+					(
+						tv_rollout.collapseAllNodes()
+					)
+				)
+				
+				function onSelectSame s e =
+				(
+					local ref_node = undefined
+					
+					if selected_nodes.count > 0 then
+					(
+						ref_node = selected_nodes[1]
+					)
+					else if context_node != undefined then
+					(
+						ref_node = context_node
+					)
+					
+					if ref_node != undefined then
+					(
+						local target_state = ref_node.StateImageIndex
+						
+						-- Clear selection
+						clearCustomSelection()
+						
+						local all_nodes = tv_rollout.getAllNodes tv_rollout.tv.Nodes
+						
+						for n in all_nodes do
+						(
+							if n.StateImageIndex == target_state then
+							(
+								append selected_nodes n
+								n.BackColor = highlight_color_obj
+							)
+						)
+						
+						if selected_nodes.count > 0 then
+						(
+							last_selected_node = selected_nodes[selected_nodes.count]
+						)
+					)
+				)
 				
 				dotNet.addEventHandler item_check	"Click" onCheck
 				dotNet.addEventHandler item_uncheck	"Click" onUnCheck
@@ -369,12 +438,13 @@ function layerTreeGenerator =
 				dotNet.addEventHandler item_tog_mix	"Click" onTogMix
 				dotNet.addEventHandler item_expand	"Click" onExpand
 				dotNet.addEventHandler item_collapse "Click" onCollapse
+				dotNet.addEventHandler item_select_same "Click" onSelectSame
 				
 				m_menu.Show tv (dotNetObject "System.Drawing.Point" arg.X arg.Y)
 			)
 			
 			-- Left Click logic
-			if arg.Button == arg.Button.Left and not is_updating do
+			if arg.Button == arg.Button.Left and not is_updating then
 			(
 				local hit_info = tv.HitTest arg.X arg.Y
 				
@@ -403,14 +473,14 @@ function layerTreeGenerator =
 							for sn in selected_nodes where sn.ForeColor.ToArgb() != locked_color_argb do
 							(
 								updateNodeState sn new_state
-								if layerToggleCallback != undefined do layerToggleCallback new_state (sn.Tag as string)
+								if layerToggleCallback != undefined then layerToggleCallback new_state (sn.Tag as string)
 							)
 						)
 						else
 						(
 							updateNodeState current_node new_state
 							
-							if layerToggleCallback != undefined do 
+							if layerToggleCallback != undefined then 
 								layerToggleCallback new_state (current_node.Tag as string)
 						)
 							
@@ -427,7 +497,7 @@ function layerTreeGenerator =
 					if is_shift and last_selected_node != undefined then
 					(
 						-- Shift Select
-						if not is_ctrl do
+						if not is_ctrl then
 						(
 							for n in selected_nodes do n.BackColor = bg_color_obj
 							selected_nodes = #()
@@ -437,7 +507,7 @@ function layerTreeGenerator =
 						local idx1 = findItem all_nodes last_selected_node
 						local idx2 = findItem all_nodes current_node
 						
-						if idx1 > 0 and idx2 > 0 do
+						if idx1 > 0 and idx2 > 0 then
 						(
 							local start_idx = amin idx1 idx2
 							local end_idx = amax idx1 idx2
@@ -481,7 +551,7 @@ function layerTreeGenerator =
 		(
 			local hit_info = tv.HitTest arg.X arg.Y
 			
-			if matchPattern (hit_info.Location.ToString()) pattern:"*StateImage*" do
+			if matchPattern (hit_info.Location.ToString()) pattern:"*StateImage*" then
 			(
 				local current_node = hit_info.Node
 				local locked_color_argb = ((dotNetClass "System.Drawing.Color").FromArgb 100 100 100).ToArgb()
@@ -518,10 +588,9 @@ function layerTreeGenerator =
 			tv.BackColor = bg_color_obj
 			tv.LineColor = (dotNetClass "System.Drawing.Color").FromArgb 150 150 150
 			
-			if layer_names_keywords != undefined do 
-				populateTreeNode layer_names_keywords tv.Nodes ""
+			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
 			
-			--tv.ExpandAll()
+			tv.ExpandAll()
 			tv.ResumeLayout()
 		)
 	)
