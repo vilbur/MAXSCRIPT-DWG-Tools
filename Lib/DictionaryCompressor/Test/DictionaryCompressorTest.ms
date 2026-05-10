@@ -6,30 +6,101 @@ filein( getFilenamePath(getSourceFileName()) + "/../DictionaryCompressor.ms" )	-
 
 /** Dictionary factory
  */
-function dictionaryFactory root_dict level:1 max_level: =
+function nestedDictionaryFactory &root_dict level:1 max_level:undefined root_index:undefined  =
 (
-	--format "\n"; print "DictionaryFactory_v.dictionaryFactory()"
+	--format "\n"; print "DictionaryFactory_v.nestedDictionaryFactory()"
+	
+	--format "\n"
+	--format "root_index: %\n" root_index
 	--format "level: %\n" level
 	
-	levels = #( "Prefix", "Keyword", "Prop", "Suffix" )
+	--levels = #( "Prefix", "Keyword", "Prop", "Suffix", "Unique"  )
+	--levels = #( "Prefix", "Keyword", "Prop", "Suffix" )
+	levels = #( "Prefix", "Keyword", "Suffix" )
 	
-	if max_level == unsupplied then
+	if max_level == undefined then
 		max_level = levels.count
 
-	for i = 1 to levels.count - level + 1 do
+	if level <= max_level then
 	(
-
-		key = levels[level]
-
-		key_1 = key + "_" + i as string
 		
-		nested_dict =  Dictionary #STRING
+		level_next = level + 1
+		
+		
+		/* FIRST LEVEL */ 
+		if root_index == undefined then
+		(
+			/* NUMBER OF ROOT ITEMS -- Same count as available levels */ 
+			count = levels.count
 			
-		root_dict[ key_1 ] = nested_dict
+			/* LAST ROOT ITEM - modify count of nested items */
+			--format "level == levels.count: %\n" (level == levels.count)
+			--if level == levels.count then
+			--(
+			--	count = level
+			----	count = 1
+			--	
+			--)
+			
+		)
+		/* MAX COUNT OF NESTED ITEMS */ 
+		else
+		(
+			/* ITEMS COUNT == INDEX OF ROOT ITEM ( 3rd root item has 3 nested items ) */ 
+			count = root_index
+			--count = levels.count
+			format "root_index == levels.count: %\n" (root_index == levels.count)
+			
+			/* LAST ROOT ITEM */ 
+			--if root_index == levels.count then
+				--count = 1
+			
+		)
+		
+		
+		is_first_level = root_index == undefined and level == 1 
+		--is_first_level = root_index == undefined
+		
+		
+		for i = 1 to count do
+		(
+			if is_first_level then
+				root_index = i
+	
+			key = levels[level]
+	
+			wtf = root_index == levels.count --and i == levels.count
+		
+			key_1 = key
+		
+		
+			--if root_index != undefined then
+				key_1 += "_" + root_index as string
+			--else
+				key_1 += "_" + level as string
+			--key_1 += "_" + is_first_level as string
+				key_1 += "_" + i as string
+			
+			
+			nested_dict =  Dictionary #STRING
+				
+			root_dict[ key_1 ] = nested_dict
+	
+			max_level_next = if is_first_level then i else max_level
+			
+			
+			--root_index_next = if is_first_level then i else undefined
+			--root_index_next = if is_first_level then i else undefined
+			root_index_next = if is_first_level then i else undefined
 
-		if level < levels.count  then
-			nested_dict = dictionaryFactory(nested_dict) level:( level + 1 ) --smax_level:( max_level - level )
+			
+			nested_dict = nestedDictionaryFactory(nested_dict) level:level_next max_level:max_level_next root_index:root_index_next
+			
+				
+			--nested_dict = nestedDictionaryFactory(nested_dict) level:level_next max_level:max_level_next root_index:( i )
+		)
 	)
+	
 	--format "root_dict: %\n" root_dict
 	root_dict --return
 )
@@ -39,7 +110,7 @@ function dictionaryFactory root_dict level:1 max_level: =
 
 dict_test	= Dictionary #STRING
 
-dict_test = dictionaryFactory(dict_test)
+dict_test = nestedDictionaryFactory(dict_test)
 
 
 DictionaryCompressor = DictionaryCompressor_v() --dictionary:dict_test
