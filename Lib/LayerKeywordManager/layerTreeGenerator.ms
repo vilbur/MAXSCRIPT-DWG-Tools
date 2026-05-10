@@ -147,6 +147,7 @@ function layerTreeGenerator =
 			for k in dict.keys do
 			(
 				local sub_dict = dict[k]
+				
 				local current_id = if parent_id_path == "" then k else (parent_id_path + " " + k)
 				
 				local current_state = 0
@@ -165,7 +166,10 @@ function layerTreeGenerator =
 				new_node.StateImageIndex = current_state
 				applyNodeColor new_node current_state
 				
-				if sub_dict.keys.count > 0 do (populateTreeNode sub_dict new_node.Nodes current_id)
+				/* ADD NESTED ITEMS */ 
+				if (isKindOf sub_dict Dictionary) then
+					if sub_dict.keys.count > 0 do (populateTreeNode sub_dict new_node.Nodes current_id)
+				
 				parent_collection.Add new_node
 			)
 		)
@@ -513,7 +517,7 @@ function layerTreeGenerator =
 			if layer_names_keywords != undefined do 
 				populateTreeNode layer_names_keywords tv.Nodes ""
 			
-			tv.ExpandAll()
+			--tv.ExpandAll()
 			tv.ResumeLayout()
 		)
 	)

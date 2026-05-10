@@ -37,8 +37,8 @@ struct LayerKeywordManager_v
 		
 		for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined and layer.name != "0" do
 		(
-			format "\n"
-			format "layer.name: %\n" layer.name
+			--format "\n"
+			----format "layer.name: %\n" layer.name
 			
 			/* SANITIZE LAYER NAME */ 
 			--layer_name = (dotnetclass "System.Text.RegularExpressions.Regex").Replace layer.name "[^a-zA-Z0-9\\d\\s\\-_]+" ""
@@ -83,7 +83,7 @@ struct LayerKeywordManager_v
 				)
 			)
 			else
-				keywords[layer_name] = Dictionary #STRING
+				keywords[layer_name] = #UNIQUE
 			
 			--format "layer: %\n" layer_name
 		)

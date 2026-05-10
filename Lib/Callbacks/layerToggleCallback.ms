@@ -2,7 +2,7 @@
  */
 function layerToggleCallback state item_id =
 (
-    format "layerToggleCallback State: % | Item ID: %\n" state item_id
+    --format "layerToggleCallback State: % | Item ID: %\n" state item_id
 
 	/** Join array to string
 	 */
@@ -24,8 +24,8 @@ function layerToggleCallback state item_id =
 	pattern =  ignore_prefix + item_id
 	
 	
-	pattern =  ignore_prefix + pattern
-	format "PATTERN: %\n" pattern
+	--pattern =  ignore_prefix + pattern
+	--format "PATTERN: %\n" pattern
 	
 	
 	for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined do

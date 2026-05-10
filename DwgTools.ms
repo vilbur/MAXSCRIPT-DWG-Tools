@@ -12,6 +12,7 @@ filein( getFilenamePath(getSourceFileName()) + "/../MAXSCRIPT-UI-framework/Lib/D
 /* CONTENT LOADER */
 filein( getFilenamePath(getSourceFileName()) + "/../MAXSCRIPT-UI-framework/Lib/ContentLoader/ContentLoader.ms" )	--"./../MAXSCRIPT-UI-framework/Lib/ContentLoader/ContentLoader.ms"
 
+filein( getFilenamePath(getSourceFileName()) + "/Lib/DictionaryCompressor/DictionaryCompressor.ms" )	--"./Lib/DictionaryCompressor/DictionaryCompressor.ms"
 
 filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerExporter.ms" )	--"./Lib/LayerExporter.ms"
 filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerCleaner.ms" )	--"./Lib/LayerCleaner.ms"
