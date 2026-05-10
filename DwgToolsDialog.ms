@@ -145,7 +145,7 @@ function dwgToolsDialog Dialog: width: =
 
 	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
 
-	--LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
+	LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
 	print "\n======================== COMPRESSED ========================\n"
 
 	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)

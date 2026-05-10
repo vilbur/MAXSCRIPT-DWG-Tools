@@ -158,7 +158,12 @@ struct LayerManagerApp
 			all_layers = for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined collect layer
 
 			/* RESET LAYERS STATE - HIDE & UNFREEZE ALL LAYERS */ 			
-			for layer in all_layers do layer.on = layer.isfrozen = false
+			for layer in all_layers do
+			(
+				layer.on = false
+				
+				layer.isfrozen = false
+			)
 			
 			/*------------------------------------------------------------------------------
 				LOAD STATE FROM INI

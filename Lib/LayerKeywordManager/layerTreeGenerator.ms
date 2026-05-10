@@ -292,6 +292,8 @@ function layerTreeGenerator =
 			
 			if not (doesFileExist ini_path) do return false
 			
+			checkAll false
+			
 			is_updating = true
 			tv.BeginUpdate()
 			
@@ -318,7 +320,9 @@ function layerTreeGenerator =
 			tv.Nodes.Clear()
 			if layer_names_keywords != undefined do 
 				populateTreeNode layer_names_keywords tv.Nodes ""
-			tv.ExpandAll()
+				
+				
+			--tv.ExpandAll()
 			
 			tv.EndUpdate()
 			is_updating = false
