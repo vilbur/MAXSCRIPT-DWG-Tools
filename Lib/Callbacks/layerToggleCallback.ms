@@ -32,9 +32,13 @@ function layerToggleCallback state item_id =
 	(
 		
 		if matchPattern layer.name pattern:( pattern ) then
-		--if matchPattern layer.name pattern:( pattern ) then
 		(
-			layer.on = mode == #SHOW and mode != #FREEZE
+			layer.on = case mode of
+			(
+				#SHOW: if not layer.isfrozen then true else layer.on
+				#HIDE: false
+				#FREEZE: false
+			)
 			
 			layer.isfrozen = mode == #FREEZE
 		)

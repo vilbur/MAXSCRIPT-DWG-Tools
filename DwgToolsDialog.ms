@@ -81,7 +81,9 @@ function dwgToolsDialog Dialog: width: =
 	
 	preset_name.Event #CHANGED ( preset_list.getFullId() + ".selection = findItem ("+preset_list.getFullId() + ".items) val")
 
-	btn_preset_save.Event	#PRESSED ("LAYER_MANAGER_APP.saveStateToIni(" + preset_name.getFullId() + ".text )")
+	btn_preset_save.Event	#PRESSED	("LAYER_MANAGER_APP.saveStateToIni(" + preset_name.getFullId() + ".text ) delete_old_file:false") tooltip:"ADD STATE OF TREE VIEW  TO PRESET"
+	btn_preset_save.Event	#RIGHTCLICK	("LAYER_MANAGER_APP.saveStateToIni(" + preset_name.getFullId() + ".text ) delete_old_file:true")  tooltip:"DELETE OLD PREST FILE AND SAVE"
+	
 	btn_preset_load.Event	#PRESSED ( callback_load_preset )
 	btn_preset_delete.Event	#PRESSED ("LAYER_MANAGER_APP.deleteIniFile()")
 	

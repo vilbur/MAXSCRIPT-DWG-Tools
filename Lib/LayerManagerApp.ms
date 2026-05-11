@@ -82,24 +82,33 @@ struct LayerManagerApp
 	
 	/** SAVE INI STATE
 	 */
-	function saveStateToIni filename =
+	function saveStateToIni filename delete_old_file:true =
 	(
 		format "\n"; print "LayerManagerApp.saveStateToIni()"
 		format "this.Controls[ #ROLLOUT ]: %\n" (this.Controls[ #ROLLOUT ])
+		format "delete_old_file: %\n" delete_old_file
 		--format "filename: %\n" filename
 		--format "ini_dir: %\n" ini_dir
 		
-		filename_new = trimRight (trimLeft filename)
-		
-		if filename_new.count > 0 then 
-			this._setIniPath (filename_new)
-		
-		
-		save_or_update = if filename_new.count > 0 then "SAVE NEW" else "UPDADTE" 
+		if (filename = trimRight (trimLeft filename)) == "" then
+			filename = getFilenameFile maxFileName
+
+		if filename.count > 0 then
+		(
+			if delete_old_file then
+				deleteFile ini_path
+
 			
-		if queryBox ( save_or_update + " Preset ?\n\n" + getFilenameFile ( current_ini_path ) ) title:( save_or_update + " PRESET")  then
-			tv_rollout.saveStateToIni this.current_ini_path
+			this._setIniPath (filename)
 		
+		
+			save_or_update = if doesFileExist current_ini_path then "UPDATE" else "SAVE NEW" 
+				
+			if queryBox ( save_or_update + " Preset ?\n\n" + filename ) title:( save_or_update + " PRESET")  then
+				tv_rollout.saveStateToIni this.current_ini_path
+			
+			
+		)
 	),
 	
 
