@@ -47,6 +47,8 @@ function dwgToolsDialog Dialog: width: =
 
 	/* SETUP */
 	ini_files = LAYER_MANAGER_APP.getIniFiles()
+	
+	ini_filenames = for ini_file in ini_files collect getFilenameFile ini_file
 	--format "ini_files: %\n" ini_files
 	
 	/* DIALOG */
@@ -58,11 +60,11 @@ function dwgToolsDialog Dialog: width: =
 	--------------------------------------------------------------------------------*/
 	_Controls   = Dialog.Controls group:("LAYERS PRESET")
 	
+	/* PRESET DROPDOWN */ 
+	preset_list = _Controls.control #DROPDOWN "[Presets List]"  items:( for ini_file in ini_files collect getFilenameFile ini_file ) value:( findItem ini_filenames (getFilenameFile maxFileName ) )
+	
 	/* PRESET NAME */ 
 	preset_name = _Controls.control #EDITTEXT "[Ini Name]" --value:( preset_list.getFullId() + ".items[1]" ) across:1
-	
-	/* PRESET DROPDOWN */ 
-	preset_list = _Controls.control #DROPDOWN "[Presets List]"  items:( for ini_file in ini_files collect getFilenameFile ini_file )
 
 
 	_Controls.Default #across 3 type:#BUTTON

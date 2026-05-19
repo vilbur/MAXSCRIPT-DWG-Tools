@@ -33,6 +33,8 @@ function layerTreeGenerator =
 
 		/* --- INTERNAL HELPERS --- */
 
+		/*
+		*/ 
 		function clearCustomSelection =
 		(
 			for n in selected_nodes do try(n.BackColor = bg_color_obj)catch()
@@ -40,6 +42,8 @@ function layerTreeGenerator =
 			last_selected_node = undefined
 		)
 
+		/*
+		*/ 
 		function applyNodeColor node state_int =
 		(
 			local current_id = node.Tag as string
@@ -59,6 +63,8 @@ function layerTreeGenerator =
 			)
 		)
 
+		/*
+		*/ 
 		function createTriStateImageList cb_size =
 		(
 			local img_list = dotNetObject "System.Windows.Forms.ImageList"
@@ -96,6 +102,8 @@ function layerTreeGenerator =
 			return img_list
 		)
 
+		/*
+		*/ 
 		function updateNodeState node state_int =
 		(
 			node.StateImageIndex = state_int
@@ -103,6 +111,8 @@ function layerTreeGenerator =
 			applyNodeColor node state_int
 		)
 
+		/*
+		*/ 
 		function getAllNodes parent_collection out_array:undefined =
 		(
 			if out_array == undefined then out_array = #()
@@ -115,6 +125,8 @@ function layerTreeGenerator =
 			out_array
 		)
 
+		/*
+		*/ 
 		function populateTreeNode dict parent_collection parent_id_path =
 		(
 			for k in dict.keys do
@@ -156,6 +168,8 @@ function layerTreeGenerator =
 			)
 		)
 	
+		/*
+		*/ 
 		function setChildrenCheckboxState parent_node target_state =
 		(
 			local locked_color_argb = ((dotNetClass "System.Drawing.Color").FromArgb 100 100 100).ToArgb()
@@ -180,6 +194,20 @@ function layerTreeGenerator =
 
 		/* --- PUBLIC API (Rollout Methods) --- */
 
+		/*
+		* Callback function triggered when node selection changes.
+		* Fill this function with your custom code.
+		*/
+		function onSelectionEnded =
+		(
+			-- The selected_nodes array contains all currently highlighted TreeNode objects.
+			-- Example usage:
+			-- for n in selected_nodes do format "Selected: %\n" (n.Tag as string)
+			format "\n"; print "onSelectionEnded()"
+		)
+
+		/*
+		*/ 
 		function expandTrueNodes =
 		(
 			tv.CollapseAll()
@@ -193,6 +221,8 @@ function layerTreeGenerator =
 			)
 		)
 
+		/*
+		*/ 
 		function getItemsByState target_state =
 		(
 			local matched_items = #()
@@ -200,6 +230,8 @@ function layerTreeGenerator =
 			return matched_items
 		)
 
+		/*
+		*/ 
 		function hideSelectedItems =
 		(
 			if selected_nodes.count > 0 then
@@ -214,6 +246,8 @@ function layerTreeGenerator =
 			)
 		)
 
+		/*
+		*/ 
 		function unhideAllItems =
 		(
 			hidden_ids = #()
@@ -225,6 +259,8 @@ function layerTreeGenerator =
 			tv.EndUpdate()
 		)
 
+		/*
+		*/ 
 		function checkAll target_state =
 		(
 			is_updating = true
@@ -243,14 +279,22 @@ function layerTreeGenerator =
 			is_updating = false
 		)
 
+		/*
+		*/ 
 		function expandAllNodes = (tv.ExpandAll())
+		/*
+		*/ 
 		function collapseAllNodes = (tv.CollapseAll())
 
+		/*
+		*/ 
 		function saveStateToIni ini_path =
 		(
 			for k in node_states.keys do setINISetting ini_path "LayerStates" k (node_states[k] as string)
 		)
 
+		/*
+		*/ 
 		function loadStateFromIni ini_path =
 		(
 			if not (doesFileExist ini_path) then return false
@@ -307,7 +351,44 @@ function layerTreeGenerator =
 			tv.EndUpdate()
 			is_updating = false
 		)
-		
+
+		/*
+		*/ 
+		function selectItemsByIds id_array target_state:unsupplied =
+		(
+			clearCustomSelection()
+			local all_nodes = getAllNodes tv.Nodes
+			
+			for n in all_nodes do
+			(
+				local node_id = n.Tag as string
+				
+				if (findItem id_array node_id) > 0 then
+				(
+					local state_matches = true
+					
+					if target_state != unsupplied then
+					(
+						if n.StateImageIndex != target_state then state_matches = false
+					)
+					
+					if state_matches then
+					(
+						appendIfUnique selected_nodes n
+						n.BackColor = highlight_color_obj
+					)
+				)
+			)
+			
+			if selected_nodes.count > 0 then
+			(
+				last_selected_node = selected_nodes[selected_nodes.count]
+			)
+			
+			-- Fire selection callback
+			onSelectionEnded()
+		)
+
 		/* --- EVENTS --- */
 
 		on tv BeforeSelect arg do (arg.Cancel = true)
@@ -351,6 +432,8 @@ function layerTreeGenerator =
 									append tv_rollout.selected_nodes n
 									n.BackColor = tv_rollout.highlight_color_obj
 								)
+								-- Fire selection callback when selecting by state
+								tv_rollout.onSelectionEnded()
 							)
 						)
 						default: (
@@ -416,6 +499,9 @@ function layerTreeGenerator =
 						current_node.BackColor = highlight_color_obj
 						last_selected_node = current_node
 					)
+					
+					-- Fire selection callback when a manual selection is made
+					onSelectionEnded()
 				)
 			)
 		)
