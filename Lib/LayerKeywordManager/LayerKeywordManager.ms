@@ -27,73 +27,110 @@ struct LayerKeywordManager_v
 	/* inhered */
 
 	/** Split layer names by keywords
+	  
+		param string prefix_mask	regEx  mask to match layer name prefix   E.G.: "\d+" >>> "01 Exterior balcony doors"
+		
+		param string word_delimeter	split layer name to kywords by delimeter E.G.: "-"   >>> "Exterior-balcony-doors"
+	  
 	 */
-	function splitLayerNamesByKeywords delimeter:" " prefix_mask:"[0-9a-zA-Z]+" =
+	function splitLayerNamesByKeywords prefix_mask:"^.*?[_-]" word_delimeter:" " = 
 	(
 		--format "\n"; print "LayerKeywordManager_v.splitLayerNamesByKeywords()"
+		--format "prefix_mask: %\n" prefix_mask
 		
+		--format "\nHOTFIX"
+		
+		word_delimeter = " "
+		
+		fn trim _string = trimLeft( trimRight _string " -_") " -_"
 		
 		keywords	= Dictionary #STRING -- KEY: VALUE:
 		
-		/* LOOP EACH LAYER */ 
-		for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined and layer.name != "0" do
+		layers_all = for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined and layer.name != "0" collect layer
+		
+		layers_top = for layer in layers_all where layer.getParent() == undefined collect layer
+		
+		
+		for layer in layers_top do
 		(
-			--format "\n"
-			----format "layer.name: %\n" layer.name
-			
-			/* SANITIZE LAYER NAME */ 
-			--layer_name = (dotnetclass "System.Text.RegularExpressions.Regex").Replace layer.name "[^a-zA-Z0-9\\d\\s\\-_]+" ""
-			layer_name = layer.name
-			
-			--format "layer_name: %\n" layer_name
-			layer_name_split	= filterString layer_name delimeter
-			
-			prefix = layer_name_split[1]
-
-			/*------------------------------------------------------------------------------
-				IF PREFIX EXITS
-			--------------------------------------------------------------------------------*/
-			/* IF LAYER NAME CAN BE SPLITTED */ 
-			if not layer.isfrozen and prefix != undefined then
+			if not layer.isfrozen then
 			(
-				prefix_mask_full_string = trimRight ( trimLeft prefix_mask "^$" )  "^$"
+				layer_name_split = this._splitPrefixByRegex layer.name prefix_mask
+	
+				prefix	= trim layer_name_split[1]
+				layer_name	= trim layer_name_split[2]
+	
+				layer_key = if prefix != "" and layer_name == "" then prefix else layer_name
 				
-				prefix_mask_full_string = "^" + prefix_mask_full_string + "$"
-
-				prefix_match = (( dotNetClass "System.Text.RegularExpressions.RegEx" ).match prefix prefix_mask_full_string ).success
-				
-				--format "prefix: %\n" prefix
-				
-				--format "prefix_match: %\n" prefix_match
-			)
+				--layer.getNumChildren()
 			
-			/*------------------------------------------------------------------------------
-				IF PREFIX MATCH MASK
-			--------------------------------------------------------------------------------*/
-			
-			
-			--if prefix_match == true and layer_name_split.count > 1 then
-			if prefix_match == true and layer_name_split.count > 1 then
-			(
-				keywords_nested = keywords
+				keywords[layer_key] = Dictionary #STRING
+				--keywords[layer.name] = Dictionary #STRING
 				
-				for x = 2 to layer_name_split.count do
-				(
-					keyword = toLower layer_name_split[x]
-					
-					--keyword += " X"
-					
-					if keywords_nested[keyword] == undefined then
-						keywords_nested[keyword] = Dictionary #STRING
-					
-					/* NEXT LOOP */ 
-					keywords_nested = keywords_nested[keyword]
-				)
 			)
 			else
-				--keywords[layer_name] = Dictionary #STRING
-				keywords[layer_name] = if layer.isfrozen then #FREEZED else #UNIQUE
+				keywords[layer_name] = #FREEZED 
+		)
+		--format "keywords.keys: %\n" keywords.keys
+		
+		/* LOOP EACH LAYER */ 
+		for layer in layers_all where findItem layers_top layer == 0 do
+		(
+			--format "\n-------------------------------------------\n"
+			--format "\nlayer.name: %\n" layer.name
+			layer_name = trim layer.name
 			
+			if not layer.isfrozen then
+			(
+				layer_name_split = this._splitPrefixByRegex layer_name prefix_mask
+				
+				prefix	= trim layer_name_split[1]
+				layer_basename	= trim layer_name_split[2]
+				--format "prefix: %\n" prefix
+				/* IF LAYER NAME IS ONLY PREFIX, then use prefix as layer name */ 
+				layer_basename = if prefix != "" and layer_basename == "" then prefix else layer_basename
+				
+				--format "layer_basename: %\n" layer_basename
+				keyword_split	= filterString layer_basename word_delimeter
+
+				--format "keywords[prefix]: %\n" keywords[prefix]
+				
+				/*------------------------------------------------------------------------------
+				
+					CODE BELOW DRIVES
+				
+				--------------------------------------------------------------------------------*/
+				
+				if keywords[prefix] != undefined then
+ 					insertItem prefix keyword_split 1
+				
+				/*--------------------------------------------------------------------------------*/
+				
+				--if prefix != "" and layer_name_split.count > 1 then
+				(
+					keywords_nested = keywords
+					
+					
+					for x = 1 to keyword_split.count do
+					(
+						--word = toLower keyword_split[x]
+						word = keyword_split[x]
+						--format "word: %\n" word
+						
+						if keywords_nested[word] == undefined then
+							keywords_nested[word] = Dictionary #STRING
+						
+						/* NEXT LOOP */ 
+						keywords_nested = keywords_nested[word]
+					)
+				)
+				--else
+					--keywords[layer_name] = Dictionary #STRING
+				
+			)
+			else
+				keywords[layer_name] = #FREEZED 
+
 			--format "layer: %\n" layer_name
 		)
 		
@@ -104,8 +141,30 @@ struct LayerKeywordManager_v
 		keywords --return
 	),
 	
-	
 	private
+	
+	/*
+    Split string to prefix and basename by regex pattern.
+    If prefix is not found then basename is original string.
+	*/
+	function _splitPrefixByRegex input_string prefix_pattern =
+	(
+		prefix_string = ""
+		basename_string = input_string
+	
+		dotnet.loadAssembly "System"
+	
+		regex_obj = dotNetObject "System.Text.RegularExpressions.Regex" prefix_pattern
+		match_obj = regex_obj.Match input_string
+	
+		if match_obj.Success and match_obj.Index == 0 then
+		(
+			prefix_string = match_obj.Value
+			basename_string = substring input_string (match_obj.Length + 1) -1
+		)
+	
+		#(prefix_string, basename_string) -- return
+	),
 	
 
 	/**

@@ -1,4 +1,4 @@
-global layer_names_keywords
+global LAYER_NAMES_KEYWORDS
 global tv_rollout
 -- global layerToggleCallback 
 
@@ -13,6 +13,8 @@ function layerTreeGenerator =
 	rollout tv_rollout "Layers Manager" width:400 height:1140
 	(
 		dotNetControl tv "System.Windows.Forms.TreeView" width:380 height:1400 pos:[10,10]
+	
+		local keyword_delimeter = "*" -- IMPORTANT: SAME MUST BE SAME IN --"./../Callbacks/layerToggleCallback.ms"
 	
 		local is_updating = false
 		local locked_ids = #()
@@ -125,29 +127,32 @@ function layerTreeGenerator =
 			out_array
 		)
 
-		/*
-		*/ 
+		/*------------------------------------------------------------------------------
+		
+			POPULATE ITEMS IN TREE
+		
+		--------------------------------------------------------------------------------*/ 
 		function populateTreeNode dict parent_collection parent_id_path =
 		(
 			for k in dict.keys do
 			(
 				local sub_dict = dict[k]
-				local current_id = if parent_id_path == "" then k else (parent_id_path + "_" + k)
+				local current_id = if parent_id_path == "" then k else (parent_id_path + keyword_delimeter + k)
 				local current_state = 0
 				
 				if hasDictValue node_states current_id then 
-				(
 					current_state = node_states[current_id]
-				)
+				
 				else
-				(
 					node_states[current_id] = current_state
-				)
+				
 				
 				if (findItem hidden_ids current_id > 0) then continue
 				
 				local new_node = dotNetObject "System.Windows.Forms.TreeNode" k
+				
 				new_node.Tag = current_id 
+				
 				new_node.StateImageIndex = current_state
 				applyNodeColor new_node current_state
 				
@@ -240,7 +245,7 @@ function layerTreeGenerator =
 				tv.BeginUpdate()
 				clearCustomSelection()
 				tv.Nodes.Clear()
-				if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
+				if LAYER_NAMES_KEYWORDS != undefined then populateTreeNode LAYER_NAMES_KEYWORDS tv.Nodes ""
 				expandTrueNodes()
 				tv.EndUpdate()
 			)
@@ -254,7 +259,7 @@ function layerTreeGenerator =
 			tv.BeginUpdate()
 			clearCustomSelection()
 			tv.Nodes.Clear()
-			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
+			if LAYER_NAMES_KEYWORDS != undefined then populateTreeNode LAYER_NAMES_KEYWORDS tv.Nodes ""
 			expandTrueNodes()
 			tv.EndUpdate()
 		)
@@ -321,7 +326,7 @@ function layerTreeGenerator =
 			
 			clearCustomSelection()
 			tv.Nodes.Clear()
-			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
+			if LAYER_NAMES_KEYWORDS != undefined then populateTreeNode LAYER_NAMES_KEYWORDS tv.Nodes ""
 			
 			-- 2. Create missing items ONLY if their INI value is 2
 			local all_nodes = getAllNodes tv.Nodes
@@ -535,7 +540,7 @@ function layerTreeGenerator =
 			tv.StateImageList = createTriStateImageList checkbox_size
 			tv.BackColor = bg_color_obj
 			tv.LineColor = (dotNetClass "System.Drawing.Color").FromArgb 150 150 150
-			if layer_names_keywords != undefined then populateTreeNode layer_names_keywords tv.Nodes ""
+			if LAYER_NAMES_KEYWORDS != undefined then populateTreeNode LAYER_NAMES_KEYWORDS tv.Nodes ""
 			--expandTrueNodes()
 			tv.ResumeLayout()
 		)

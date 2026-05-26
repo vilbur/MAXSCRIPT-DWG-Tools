@@ -6,7 +6,13 @@ function layerToggleCallback state item_id =
 
 	/** Join array to string
 	 */
-	function arrayToString arr delimeter = ( _string = ""; for item in arr do _string += item as string  + delimeter; substring _string 1 (_string.count-delimeter.count))
+	--function arrayToString arr delimeter = ( _string = ""; for item in arr do _string += item as string  + delimeter; substring _string 1 (_string.count-delimeter.count))
+	
+	--function makeRegexPattern pattern_string = ( substituteString pattern_string "*" "[\\s_-]+" ) -- return
+	/** Layer name match
+	 */
+	function layerNameMatch _string pattern = ( dotNetClass "System.Text.RegularExpressions.Regex").IsMatch _string pattern ((dotNetClass "System.Text.RegularExpressions.RegexOptions").IgnoreCase)
+
 	
 	mode = case state of
 	(
@@ -15,23 +21,24 @@ function layerToggleCallback state item_id =
 		2:#FREEZE
 	)
 	
+	--all_delimeters = "[\s-_]+"
 	
-	ignore_prefix = ignore_sufix = "*"
+	ignore_prefix = "^.*"
 	
-	--id_split	= filterString item_id "_"
-	--pattern = arrayToString id_split "*"
+	--id_split	= filterString item_id " "
 	
-	pattern =  ignore_prefix + item_id
+	layer_name_pattern =  substituteString item_id "*" "[\\s_-]+"
 	
+	pattern =  ignore_prefix + layer_name_pattern + "$"
 	
-	--pattern =  ignore_prefix + pattern
-	--format "PATTERN: %\n" pattern
+	--pattern =  ".*"
+	format "PATTERN:|%|\n" pattern
 	
 	
 	for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i) != undefined do
 	(
 		
-		if matchPattern layer.name pattern:( pattern ) then
+		if layerNameMatch layer.name pattern then
 		(
 			layer.on = case mode of
 			(

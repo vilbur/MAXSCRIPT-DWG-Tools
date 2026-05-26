@@ -51,9 +51,14 @@ function dwgToolsDialog Dialog: width: =
 	ini_filenames = for ini_file in ini_files collect getFilenameFile ini_file
 	--format "ini_files: %\n" ini_files
 	
-	/* DIALOG */
+	
+	/*==============================================================================
+		
+		DEFINE DIALOG
+	
+	================================================================================*/
 	if Dialog == undefined then 
-		Dialog 	    = Dialog_v ("DwgTools") width:width height:dialog_height debug:true --ini:(getSourceFileName()) 
+		Dialog = Dialog_v ("DwgTools") width:width height:dialog_height ini:(getSourceFileName()) debug:false 
 	
 	/*------------------------------------------------------------------------------
 		PRESET CONTROLS
@@ -98,8 +103,11 @@ function dwgToolsDialog Dialog: width: =
 	/* ROLLOUTS */
 	_Rollout_cfg	 = _Rollouts.Roll "Layer Names Config"
 	
+	
+	
+	
 	/*------------------------------------------------------------------------------
-		LAYER NAME CONTROLS
+		LAYER NAME CONFIG
 	--------------------------------------------------------------------------------*/
 	_Controls_cfg   = _Rollout_cfg.Controls() --group:("LAYER NAMES CONFIG") 
 
@@ -107,8 +115,8 @@ function dwgToolsDialog Dialog: width: =
 	_Controls_cfg.Default #offset	[ -64, 0]	type:#EDITTEXT
 	
 
-	btn_word_delimeter	= _Controls_cfg.control #EDITTEXT "Word Delimeter"	value:"\\s+" --fieldWidth:128
-	btn_prefix_match	= _Controls_cfg.control #EDITTEXT "Prefix Match"	value:"[0-9a-zA-Z]+" --fieldWidth:128
+	btn_prefix_mask	= _Controls_cfg.control #EDITTEXT "Prefix Match"	value:"^.*?[-_]"	tooltip:"RegEx matching prefix\n\nE.G.:'Prefix-Layer base name'"  --fieldWidth:128
+	btn_word_delimeter	= _Controls_cfg.control #EDITTEXT "Word Delimeter"	value:"\\s+"	tooltip:"Delimeter of words in layer name\n\nE.G.:'Exterior balcony doors'" --fieldWidth:128
 	
 	cbx_ignore_freezed	= _Controls_cfg.control #CHECKBOX "Ignore Freezed Layers"	value:true --fieldWidth:128
 	
@@ -129,7 +137,7 @@ function dwgToolsDialog Dialog: width: =
 	LAYER_MANAGER_APP.addControl #btn_preset_delete 	btn_preset_delete
 	
 	LAYER_MANAGER_APP.addControl #btn_word_delimeter 	btn_word_delimeter
-	LAYER_MANAGER_APP.addControl #btn_prefix_match 	btn_prefix_match
+	LAYER_MANAGER_APP.addControl #btn_prefix_mask 	btn_prefix_mask
 	LAYER_MANAGER_APP.addControl #cbx_ignore_freezed 	cbx_ignore_freezed
 	
 	
@@ -140,14 +148,16 @@ function dwgToolsDialog Dialog: width: =
 	
 	LayerKeywordManager = LayerKeywordManager_v()
 
-	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords()
+	--LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords prefix_mask:LAYER_MANAGER_APP.Controls[#btn_prefix_mask].text 
+	LAYER_NAMES_KEYWORDS = LayerKeywordManager.splitLayerNamesByKeywords prefix_mask:LAYER_MANAGER_APP.Controls[#btn_prefix_mask].text word_delimeter:LAYER_MANAGER_APP.Controls[#btn_word_delimeter].text 
 	
 	DictionaryCompressor = DictionaryCompressor_v() --dictionary:dict_test
 	--print "\n======================== ORIGINAL ========================\n"
 
-	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
+	format "\n\n"
+	DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)
 
-	LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
+	--LAYER_NAMES_KEYWORDS = ( DictionaryCompressor_v()).compressDictionary(LAYER_NAMES_KEYWORDS)
 	--print "\n======================== COMPRESSED ========================\n"
 
 	--DictionaryCompressor.printDictionary(LAYER_NAMES_KEYWORDS)

@@ -49,7 +49,7 @@ dialog_width = 320
 --format "Dialog._Controls.count: %\n" Dialog._Controls.count
 
 /* MODIFY DIALOG */ 
-Dialog = dwgToolsDialog Dialog:Dialog width:dialog_width
+Dialog = dwgToolsDialog Dialog:Dialog width:dialog_width ini:(getSourceFileName())
 --format "Dialog._Controls.count: %\n" Dialog._Controls.count
 
 /* CREATE DIALOG */ 
