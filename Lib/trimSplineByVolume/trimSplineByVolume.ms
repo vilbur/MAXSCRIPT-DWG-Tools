@@ -1,13 +1,14 @@
 clearListener(); print("Cleared in: "+getSourceFileName())
-/* version 2.9
+/* version 3.4
     Trim splines by selected volume
-    Fix: UI ticker pauses during heavy Generation and Mass Mode operations to prevent polling lag.
-    Feature: Mass Mode now automatically deletes all used volumes at the end, wrapped in a separate, easily undoable block.
+    UI Update: Added script version to the dialog title.
+    Feature: Canvas calculation explicitly ignores grouped objects to prevent bounding box inflation.
+    Feature: Outlier rejection increased (now wraps % of central knot density, ignoring the furthest 10% of scattered splines).
 */
 
 struct trimSplineByVolume_v
 (
-    script_version = "v2.9",
+    script_version = "v3.4",
 
     function isNodeUnhidden node_value = (isValidNode node_value and node_value.isHidden == false),
     function isNodeLayerVisible node_value = (isValidNode node_value and (node_value.layer == undefined or node_value.layer.on)),
@@ -48,14 +49,14 @@ struct trimSplineByVolume_v
     (
         local valid_vols = #()
         
-        for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n) do appendIfUnique valid_vols n
+        for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n and n.name != "TRIM_CANVAS") do appendIfUnique valid_vols n
         
         for i = 0 to LayerManager.count - 1 do
         (
             local lay = LayerManager.getLayer i
             local lay_nodes = #()
             lay.nodes &lay_nodes
-            for n in lay_nodes where (n.name == lay.name and superClassOf n != Shape and not isGroupHead n) do appendIfUnique valid_vols n
+            for n in lay_nodes where (n.name == lay.name and superClassOf n != Shape and not isGroupHead n and n.name != "TRIM_CANVAS") do appendIfUnique valid_vols n
         )
         valid_vols
     ),
@@ -230,6 +231,130 @@ struct trimSplineByVolume_v
         try ( for c = 1 to lay.getNumChildren() do collectNodesFromLayer (lay.getChild c) &nodeList ) catch()
     ),
 
+    function compareDist a b =
+    (
+        if (a[5] < b[5]) then -1
+        else if (a[5] > b[5]) then 1
+        else 0
+    ),
+
+    function generateCanvasVolume =
+    (
+        undo "Generate Canvas" on
+        (
+            local existing = getNodeByName "TRIM_CANVAS"
+            if (isValidNode existing) then delete existing
+            
+            local def_layer = LayerManager.getLayer 0
+            if (def_layer != undefined) then def_layer.on = true
+            
+            openGroupsOfUnhiddenObjects ignore_frozen:true
+            
+            local shapes_data = #()
+            local total_knots = 0
+            
+            for n in objects where (isSplineShapeNode n and n.name != "TRIM_CANVAS" and not isGroupHead n and not isGroupMember n and isNodeProcessable n ignore_frozen:true) do
+            (
+                local bb = nodeGetBoundingBox n (matrix3 1)
+                local center = (bb[1] + bb[2]) / 2.0
+                local dist = length center
+                
+                local k_count = 0
+                for sp = 1 to (numSplines n) do k_count += numKnots n sp
+                
+                if (k_count > 0) then
+                (
+                    append shapes_data #(n, bb[1], bb[2], center, dist, k_count)
+                    total_knots += k_count
+                )
+            )
+            
+            local h_size = 500.0
+            
+            if (shapes_data.count > 0) then
+            (
+                qsort shapes_data compareDist
+                
+                local min_p = [1e9, 1e9, 1e9]
+                local max_p = [-1e9, -1e9, -1e9]
+                local accum_knots = 0
+                local target_knots = total_knots * 0.90
+                
+                for d in shapes_data do
+                (
+                    accum_knots += d[6]
+                    
+                    if (d[2].x < min_p.x) then min_p.x = d[2].x
+                    if (d[2].y < min_p.y) then min_p.y = d[2].y
+                    if (d[2].z < min_p.z) then min_p.z = d[2].z
+                    
+                    if (d[3].x > max_p.x) then max_p.x = d[3].x
+                    if (d[3].y > max_p.y) then max_p.y = d[3].y
+                    if (d[3].z > max_p.z) then max_p.z = d[3].z
+                    
+                    if (accum_knots >= target_knots) then exit
+                )
+                
+                local max_extent = amax (abs min_p.x) (abs min_p.y) (abs min_p.z) (abs max_p.x) (abs max_p.y) (abs max_p.z)
+                h_size = max_extent * 1.05 
+                if (h_size <= 0) then h_size = 500.0
+            )
+            
+            try (
+                local d = VolumeHelper name:"TRIM_CANVAS" pos:[0,0,0] size:h_size color:(color 255 128 0)
+                if (def_layer != undefined) then def_layer.addNode d
+                
+                select d
+                actionMan.executeAction 0 "311"
+                
+            ) catch (
+                format "VolumeHelper class missing. Ensure plugin is loaded.\n"
+            )
+        )
+    ),
+
+    function trimCanvas quiet:false ignore_frozen:true =
+    (
+        local canvas_node = getNodeByName "TRIM_CANVAS"
+        if (canvas_node == undefined or not isValidNode canvas_node) then 
+        (
+            if (not quiet) then messageBox "TRIM_CANVAS helper not found.\nCreate it first." title:"Trim Canvas"
+            return undefined
+        )
+        
+        openGroupsOfUnhiddenObjects ignore_frozen:ignore_frozen
+        
+        local canvas_bb = nodeGetBoundingBox canvas_node (matrix3 1)
+        local c_min = canvas_bb[1]
+        local c_max = canvas_bb[2]
+        
+        local objs_to_delete = for n in objects where (n != canvas_node and not isGroupHead n and isNodeProcessable n ignore_frozen:ignore_frozen) collect n
+        local del_count = 0
+        
+        undo "Trim Canvas" on
+        (
+            for n in objs_to_delete do
+            (
+                local o_bb = nodeGetBoundingBox n (matrix3 1)
+                local o_min = o_bb[1]
+                local o_max = o_bb[2]
+                
+                local is_outside = (o_max.x < c_min.x or o_min.x > c_max.x or \
+                                    o_max.y < c_min.y or o_min.y > c_max.y or \
+                                    o_max.z < c_min.z or o_min.z > c_max.z)
+                
+                if (is_outside) then
+                (
+                    delete n
+                    del_count += 1
+                )
+            )
+        )
+        
+        if (not quiet) then completeRedraw()
+        if (not quiet) then messageBox ("Canvas Trim Complete.\nDeleted Objects: " + del_count as string) title:"Trim Canvas"
+    ),
+
     function generateLayerVolumes include_nested:false =
     (
         undo "Generate Layer Volumes" on
@@ -253,7 +378,7 @@ struct trimSplineByVolume_v
                         local max_p = [-1e9, -1e9, -1e9]
                         local valid_bbox = false
                         
-                        for n in all_nodes where isValidNode n and n.name != lay_name do
+                        for n in all_nodes where isValidNode n and n.name != lay_name and n.name != "TRIM_CANVAS" do
                         (
                             local bb = nodeGetBoundingBox n (matrix3 1)
                             if (bb[1].x < min_p.x) then min_p.x = bb[1].x
@@ -400,22 +525,27 @@ struct trimSplineByVolume_v
             local last_tol = 0.001 
             local last_label_text = ""
             
-            group "Volume Targets"
+            group "Level 1: Trim Canvas"
             (
-                dotNetControl lbl_vol "System.Windows.Forms.Label" width:190 height:24 align:#center tooltip:"Auto-detected volume status"
+                button btn_create_canvas "Create Canvas Volume" width:190 height:30 tooltip:"Centers at [0,0,0], ignores grouped objects and scales to tightly wrap 90% of the core spline density."
+                button btn_run_canvas "TRIM CANVAS (DELETE OUTSIDE)" width:190 height:30 tooltip:"Deletes all objects whose bounding box is completely outside the Canvas volume."
+            )
+
+            group "Level 2: Trim View"
+            (
+                dotNetControl lbl_vol "System.Windows.Forms.Label" width:190 height:24 align:#center tooltip:"Auto-detected layer volume status"
                 timer tmr_vol "Volume Ticker" interval:500 active:true
-                button btn_gen "Generate Layer Volumes" width:190 height:40 tooltip:"L-Click: Top layers only | R-Click: All nested layers"
+                button btn_gen "Generate Layer Volumes" width:190 height:30 tooltip:"L-Click: Top layers only | R-Click: All nested layers"
+                button btn_run "TRIM SPLINES (SINGLE)" width:190 height:30 tooltip:"Trim all valid splines using the active volume"
+                button btn_mass "MASS MODE (ALL LAYERS)" width:190 height:30 tooltip:"Iterate layers, using their named VolumeHelpers to isolate & trim layer geometry"
             )
             
             group "Settings"
             (
                 spinner spn_tol "Tolerance: " range:[0.00001, 1000.0, 0.001] scale:0.00001 type:#float align:#center tooltip:"Threshold for Knot bounding & Auto-Weld"
                 checkbox chk_del "Delete Empty Splines" checked:true align:#center tooltip:"Delete completely empty remaining splines"
-                checkbox chk_frz "Ignore Frozen Objects" checked:true align:#center tooltip:"Skip processing frozen splines"
+                checkbox chk_frz "Ignore Frozen Objects" checked:true align:#center tooltip:"Skip processing frozen objects"
             )
-            
-            button btn_run "TRIM SPLINES (SINGLE)" width:190 height:40 tooltip:"Trim all valid splines using the active volume"
-            button btn_mass "MASS MODE (ALL LAYERS)" width:190 height:40 offset:[0,5] tooltip:"Iterate layers, using their named VolumeHelpers to isolate & trim layer geometry"
             
             function updateVolumeLabel =
             (
@@ -439,7 +569,7 @@ struct trimSplineByVolume_v
                     for v in all_vols where (::trimSplineByVolume.isNodeUnhidden v and ::trimSplineByVolume.isNodeLayerVisible v) do use_count += 1
                     
                     local active_vol = undefined
-                    local sel_vols = for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n) collect n
+                    local sel_vols = for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n and n.name != "TRIM_CANVAS") collect n
                     
                     if (sel_vols.count > 0) then active_vol = sel_vols[1]
                     
@@ -496,6 +626,8 @@ struct trimSplineByVolume_v
             
             on ro_trimSplineByVolume open do
             (
+                ro_trimSplineByVolume.title = "Trim Splines " + ::trimSplineByVolume.script_version
+                
                 lbl_vol.TextAlign = (dotNetClass "System.Drawing.ContentAlignment").MiddleCenter
                 lbl_vol.BorderStyle = (dotNetClass "System.Windows.Forms.BorderStyle").FixedSingle
                 lbl_vol.Font = dotNetObject "System.Drawing.Font" "Arial" 8 (dotNetClass "System.Drawing.FontStyle").Bold
@@ -505,6 +637,14 @@ struct trimSplineByVolume_v
             )
             
             on ro_trimSplineByVolume close do saveSettings()
+            
+            on btn_create_canvas pressed do ::trimSplineByVolume.generateCanvasVolume()
+            
+            on btn_run_canvas pressed do
+            (
+                saveSettings()
+                ::trimSplineByVolume.trimCanvas quiet:false ignore_frozen:chk_frz.checked
+            )
             
             on btn_gen pressed do
             (

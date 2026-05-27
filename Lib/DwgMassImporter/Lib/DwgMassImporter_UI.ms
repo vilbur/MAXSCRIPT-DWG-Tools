@@ -1,6 +1,6 @@
 /*
     Description: UI and Dialog Methods for DWG Mass Importer
-    Version: 0.57
+    Version: 0.58
 */
 
 struct DwgMassImporter_UI
@@ -55,8 +55,8 @@ struct DwgMassImporter_UI
             (
                 ::g_DwgMassImporter_TempSettings.regex_search = edt_search.text
                 ::g_DwgMassImporter_TempSettings.regex_replace = edt_replace.text
-                ::g_DwgMassImporter_TempSettings.group_objects = chk_group.state
-                ::g_DwgMassImporter_TempSettings.fix_flatten_mesh = chk_flatten.state
+                ::g_DwgMassImporter_TempSettings.group_objects = chk_group.checked
+                ::g_DwgMassImporter_TempSettings.fix_flatten_mesh = chk_flatten.checked
                 ::g_DwgMassImporter_RegexConfirmed = true
                 destroyDialog regex_rollout
             )

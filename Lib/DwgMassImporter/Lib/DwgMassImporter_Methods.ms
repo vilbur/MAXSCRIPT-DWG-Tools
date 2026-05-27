@@ -194,23 +194,134 @@ struct DwgMassImporter_Methods
         )
     ),
 
+    function getTopLayerUnderParent layer_ref parent_layer =
+    (
+        local top_layer = layer_ref
+        local current_layer = layer_ref
+        local search_done = false
+
+        while (current_layer != undefined and search_done == false) do
+        (
+            if (current_layer == parent_layer) then
+            (
+                top_layer = parent_layer
+                search_done = true
+            )
+            else
+            (
+                local parent_ref = undefined
+                try(parent_ref = current_layer.getParent()) catch(parent_ref = undefined)
+
+                if (parent_ref == parent_layer) then
+                (
+                    top_layer = current_layer
+                    search_done = true
+                )
+                else
+                (
+                    current_layer = parent_ref
+                )
+            )
+        )
+
+        top_layer
+    ),
+
+    function collectTopHierarchyNodes nodes_array =
+    (
+        local top_nodes = #()
+
+        for obj in nodes_array do
+        (
+            if (isValidNode obj) then
+            (
+                if (obj.parent == undefined or findItem nodes_array obj.parent == 0) then
+                (
+                    append top_nodes obj
+                )
+            )
+        )
+
+        top_nodes
+    ),
+
+    function collectNodeTransforms nodes_array =
+    (
+        local transform_data = #()
+
+        for obj in nodes_array do
+        (
+            if (isValidNode obj) then
+            (
+                append transform_data #(obj, obj.transform)
+            )
+        )
+
+        transform_data
+    ),
+
+    function restoreNodeTransforms transform_data =
+    (
+        for item in transform_data do
+        (
+            if (item.count == 2 and isValidNode item[1]) then
+            (
+                try(item[1].transform = item[2]) catch()
+            )
+        )
+    ),
+
     function groupObjectsByDwgFile parent_layer final_new_nodes file_name =
     (
         if (settings.group_objects and final_new_nodes.count > 0) then
         (
-            local top_level_nodes = #()
-            
+            local used_top_layers = #()
+            local layer_nodes = #()
+
             for obj in final_new_nodes do
             (
                 if (isValidNode obj) then
-                    if (obj.parent == undefined or findItem final_new_nodes obj.parent == 0) then
-                        append top_level_nodes obj
+                (
+                    local top_layer = getTopLayerUnderParent obj.layer parent_layer
+                    local layer_index = findItem used_top_layers top_layer
+
+                    if (layer_index == 0) then
+                    (
+                        append used_top_layers top_layer
+                        append layer_nodes #(obj)
+                    )
+                    else
+                    (
+                        append layer_nodes[layer_index] obj
+                    )
+                )
             )
-            
-            if (top_level_nodes.count > 0) then
+
+            for i = 1 to used_top_layers.count do
             (
-                local grp = group top_level_nodes name:file_name select:false
-                parent_layer.addNode grp
+                local top_layer = used_top_layers[i]
+                local nodes_in_top_layer = layer_nodes[i]
+                local top_level_nodes = collectTopHierarchyNodes nodes_in_top_layer
+
+                if (top_level_nodes.count > 0) then
+                (
+                    local transform_data = collectNodeTransforms nodes_in_top_layer
+                    local group_name = top_layer.name
+
+                    if (top_layer == parent_layer) then
+                    (
+                        group_name = file_name
+                    )
+
+                    local grp = undefined
+                    try(grp = group top_level_nodes name:group_name select:false) catch(grp = undefined)
+
+                    if (isValidNode grp) then
+                    (
+                        try(top_layer.addNode grp) catch()
+                        restoreNodeTransforms transform_data
+                    )
+                )
             )
         )
     ),

@@ -29,7 +29,8 @@ Mass-import DWG files into 3ds Max.
   Some splines are imported as meshes. This option converts them back to splines.  
 
 - **Group Each DWG**  
-  Groups each imported DWG file. This is usually not needed.  
+  Groups each imported DWG. It helps delete with messy splines  
+  It visualize bounging box of whole dwg objects  
 
 ---  
 
