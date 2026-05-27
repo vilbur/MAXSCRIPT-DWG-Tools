@@ -1,5 +1,4 @@
-
-# Set of tools to process dwg files in 3Ds Max  
+# Set of Tools to Process DWG Files in 3ds Max  
 
 ### Pipeline for Processing DWG Files  
 
@@ -15,8 +14,9 @@ Filenames are important because they become **layer names in 3ds Max**.
 
 ## Import DWG Files  
 
-Uses: [`DwgMassImporter.ms`](\Lib\DwgMassImporter\)  
-![ DwgMassImporter ](Doc\DwgMassImporter.jpg "DwgMassImporter")  
+Uses: [`DwgMassImporter.ms`](Lib/DwgMassImporter/)  
+
+![DwgMassImporter](Doc/DwgMassImporter.jpg "DwgMassImporter")  
 
 Mass-import DWG files into 3ds Max.  
 
@@ -35,10 +35,9 @@ Mass-import DWG files into 3ds Max.
 
 ## Clean Up DWG Data  
 
-Uses: [`trimSplineByVolume.ms`](\Lib\trimSplineByVolume\)  
-![ trimSplineByVolume ](Doc\trimSplineByVolume.jpg "trimSplineByVolume")  
+Uses: [`trimSplineByVolume.ms`](Lib/trimSplineByVolume/)  
 
-
+![trimSplineByVolume](Doc/trimSplineByVolume.jpg "trimSplineByVolume")  
 
 ### Trim the Desired View from the DWG File  
 
@@ -63,14 +62,12 @@ Use **Undo** to bring them back if needed.
 
 ---  
 
-# Result after import &  cleanup  
+# Result After Import and Cleanup  
 
 Each view has its own layer, named after the DWG file.  
 
+---  
 
---  
+# DWG Layer Viewer  
 
-## DWG LAYER VIEWER  
-
-![ DwgLayerViewer ](Doc\DwgLayerViewer.jpg "DwgLayerViewer")  
-  
+![DwgLayerViewer](Doc/DwgLayerViewer.jpg "DwgLayerViewer")  
