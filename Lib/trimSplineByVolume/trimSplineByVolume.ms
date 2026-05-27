@@ -1,16 +1,13 @@
 clearListener(); print("Cleared in: "+getSourceFileName())
-
-
-/* version 2.6
+/* version 2.9
     Trim splines by selected volume
-    Fix: Implemented 3-knot sliding window evaluation to accurately preserve boundary-crossing segments
-         while aggressively removing exterior spikes and excess bulk geometry. 
-         Pre-calculates knot states to prevent shifting index deletion bugs.
+    Fix: UI ticker pauses during heavy Generation and Mass Mode operations to prevent polling lag.
+    Feature: Mass Mode now automatically deletes all used volumes at the end, wrapped in a separate, easily undoable block.
 */
 
 struct trimSplineByVolume_v
 (
-    script_version = "v2.6",
+    script_version = "v2.9",
 
     function isNodeUnhidden node_value = (isValidNode node_value and node_value.isHidden == false),
     function isNodeLayerVisible node_value = (isValidNode node_value and (node_value.layer == undefined or node_value.layer.on)),
@@ -47,27 +44,20 @@ struct trimSplineByVolume_v
         opened_count
     ),
 
-    function getSelectedVolumeNodeAndCount =
+    function getSceneVolumes =
     (
-        local found_node = undefined
-        local total_count = 0
+        local valid_vols = #()
         
-        local valid_sel = for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n) collect n
-        if (valid_sel.count > 0) then
+        for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n) do appendIfUnique valid_vols n
+        
+        for i = 0 to LayerManager.count - 1 do
         (
-            found_node = valid_sel[1]
-            total_count = valid_sel.count
+            local lay = LayerManager.getLayer i
+            local lay_nodes = #()
+            lay.nodes &lay_nodes
+            for n in lay_nodes where (n.name == lay.name and superClassOf n != Shape and not isGroupHead n) do appendIfUnique valid_vols n
         )
-        else
-        (
-            local valid_objs = for n in objects where (isNodeProcessable n ignore_frozen:false and superClassOf n != Shape and not isGroupHead n) collect n
-            if (valid_objs.count > 0) then
-            (
-                found_node = valid_objs[1]
-                total_count = valid_objs.count
-            )
-        )
-        #(found_node, total_count)
+        valid_vols
     ),
 
     function getVolumeBoundsData volume_node_value =
@@ -141,7 +131,6 @@ struct trimSplineByVolume_v
                 local k_count = numKnots shape_node sp_idx
                 local is_closed = isClosed shape_node sp_idx
                 
-                -- Pre-calculate OUT states to avoid shifting index bugs during reverse deletion
                 local out_states = for k = 1 to k_count collect (not (isWorldPointInsideVolume (getKnotPoint shape_node sp_idx k) bounds_data tolerance_value:tolerance_value))
                 
                 for k_idx = k_count to 1 by -1 do
@@ -172,7 +161,6 @@ struct trimSplineByVolume_v
                                 local prev_out = out_states[prev_idx]
                                 local next_out = out_states[next_idx]
                                 
-                                -- 3-Knot Logic: Delete if neighbors are both inside (spike removal) OR both outside (excess removal)
                                 if (prev_out == next_out) then should_delete = true
                             )
                             else if (has_prev and not has_next) then
@@ -186,7 +174,6 @@ struct trimSplineByVolume_v
                         )
                         else if (k_count == 2) then
                         (
-                            -- Fallback for 2-knot segments to ensure isolated outside points are swept
                             local other_idx = if (k_idx == 1) then 2 else 1
                             if (out_states[other_idx]) then should_delete = true
                         )
@@ -387,6 +374,15 @@ struct trimSplineByVolume_v
             turnOnLayerChain lay
             unhideLayerHierarchy lay
         )
+
+        undo "Delete Mass Volumes" on
+        (
+            for v = 1 to mass_volumes.count do
+            (
+                local del_vol = mass_volumes[v][2]
+                if (isValidNode del_vol) then delete del_vol
+            )
+        )
         
         if (not quiet) then format "\n"
         completeRedraw()
@@ -402,11 +398,12 @@ struct trimSplineByVolume_v
             local current_vol = undefined
             local ini_file = getDir #plugcfg + "\\trimSplineByVolume.ini"
             local last_tol = 0.001 
+            local last_label_text = ""
             
             group "Volume Targets"
             (
-                dotNetControl lbl_vol "System.Windows.Forms.Label" width:190 height:24 align:#center tooltip:"Currently assigned volume object"
-                button btn_pick "Load volume from selection" width:190 height:40 tooltip:"Assigns the selected volume object"
+                dotNetControl lbl_vol "System.Windows.Forms.Label" width:190 height:24 align:#center tooltip:"Auto-detected volume status"
+                timer tmr_vol "Volume Ticker" interval:500 active:true
                 button btn_gen "Generate Layer Volumes" width:190 height:40 tooltip:"L-Click: Top layers only | R-Click: All nested layers"
             )
             
@@ -417,9 +414,63 @@ struct trimSplineByVolume_v
                 checkbox chk_frz "Ignore Frozen Objects" checked:true align:#center tooltip:"Skip processing frozen splines"
             )
             
-            button btn_run "TRIM SPLINES (SINGLE)" width:190 height:40 tooltip:"Trim all valid splines using the assigned volume"
+            button btn_run "TRIM SPLINES (SINGLE)" width:190 height:40 tooltip:"Trim all valid splines using the active volume"
             button btn_mass "MASS MODE (ALL LAYERS)" width:190 height:40 offset:[0,5] tooltip:"Iterate layers, using their named VolumeHelpers to isolate & trim layer geometry"
             
+            function updateVolumeLabel =
+            (
+                local all_vols = ::trimSplineByVolume.getSceneVolumes()
+                local total_count = all_vols.count
+                
+                if (total_count == 0) then
+                (
+                    current_vol = undefined
+                    local empty_text = "None Selected / Found"
+                    if (last_label_text != empty_text) then
+                    (
+                        lbl_vol.Text = empty_text
+                        lbl_vol.ForeColor = (dotNetClass "System.Drawing.Color").Red
+                        last_label_text = empty_text
+                    )
+                )
+                else
+                (
+                    local use_count = 0
+                    for v in all_vols where (::trimSplineByVolume.isNodeUnhidden v and ::trimSplineByVolume.isNodeLayerVisible v) do use_count += 1
+                    
+                    local active_vol = undefined
+                    local sel_vols = for n in selection where (isValidNode n and superClassOf n != Shape and not isGroupHead n) collect n
+                    
+                    if (sel_vols.count > 0) then active_vol = sel_vols[1]
+                    
+                    if (active_vol == undefined) then
+                    (
+                        local vis_vols = for v in all_vols where (::trimSplineByVolume.isNodeUnhidden v and ::trimSplineByVolume.isNodeLayerVisible v) collect v
+                        if (vis_vols.count > 0) then active_vol = vis_vols[1]
+                        else active_vol = all_vols[1]
+                    )
+                    
+                    current_vol = active_vol
+                    local new_text = ""
+                    
+                    if (total_count > 1) then
+                    (
+                        new_text = "Used " + (use_count as string) + " of " + (total_count as string) + " in scene"
+                    )
+                    else
+                    (
+                        new_text = active_vol.name
+                    )
+                    
+                    if (last_label_text != new_text) then
+                    (
+                        lbl_vol.Text = new_text
+                        lbl_vol.ForeColor = (dotNetClass "System.Drawing.Color").LimeGreen
+                        last_label_text = new_text
+                    )
+                )
+            )
+
             function saveSettings =
             (
                 setINISetting ini_file "Settings" "Tolerance" (spn_tol.value as string)
@@ -441,44 +492,34 @@ struct trimSplineByVolume_v
                 if (ig != "") then chk_frz.checked = (ig == "true")
             )
             
-            function updateVol node count_val =
-            (
-                current_vol = node
-                if (isValidNode node) then 
-                (
-                    if (count_val > 1) then lbl_vol.Text = node.name + " (1 of " + count_val as string + " found)"
-                    else lbl_vol.Text = node.name
-                    
-                    lbl_vol.ForeColor = (dotNetClass "System.Drawing.Color").LimeGreen 
-                ) 
-                else 
-                (
-                    lbl_vol.Text = "None Selected!"
-                    lbl_vol.ForeColor = (dotNetClass "System.Drawing.Color").Red
-                )
-                lbl_vol.BackColor = (dotNetClass "System.Drawing.Color").FromArgb 40 40 40
-            )
+            on tmr_vol tick do updateVolumeLabel()
             
             on ro_trimSplineByVolume open do
             (
                 lbl_vol.TextAlign = (dotNetClass "System.Drawing.ContentAlignment").MiddleCenter
                 lbl_vol.BorderStyle = (dotNetClass "System.Windows.Forms.BorderStyle").FixedSingle
-                lbl_vol.Font = dotNetObject "System.Drawing.Font" "Arial" 9 (dotNetClass "System.Drawing.FontStyle").Bold
+                lbl_vol.Font = dotNetObject "System.Drawing.Font" "Arial" 8 (dotNetClass "System.Drawing.FontStyle").Bold
+                lbl_vol.BackColor = (dotNetClass "System.Drawing.Color").FromArgb 40 40 40
                 loadSettings()
-                
-                local v_data = ::trimSplineByVolume.getSelectedVolumeNodeAndCount()
-                updateVol v_data[1] v_data[2]
+                updateVolumeLabel()
             )
+            
             on ro_trimSplineByVolume close do saveSettings()
             
-            on btn_gen pressed do ::trimSplineByVolume.generateLayerVolumes include_nested:false
-            on btn_gen rightclick do ::trimSplineByVolume.generateLayerVolumes include_nested:true
-            
-            on btn_pick pressed do
+            on btn_gen pressed do
             (
-                local v_data = ::trimSplineByVolume.getSelectedVolumeNodeAndCount()
-                if (v_data[1] != undefined) then updateVol v_data[1] v_data[2]
-                else messageBox "No valid volume selected or found." title:"Trim Splines"
+                tmr_vol.active = false
+                ::trimSplineByVolume.generateLayerVolumes include_nested:false
+                tmr_vol.active = true
+                updateVolumeLabel()
+            )
+            
+            on btn_gen rightclick do
+            (
+                tmr_vol.active = false
+                ::trimSplineByVolume.generateLayerVolumes include_nested:true
+                tmr_vol.active = true
+                updateVolumeLabel()
             )
             
             on spn_tol changed val do
@@ -492,14 +533,20 @@ struct trimSplineByVolume_v
             on btn_run pressed do
             (
                 saveSettings()
+                tmr_vol.active = false
                 if (isValidNode current_vol) then ::trimSplineByVolume.run current_vol quiet:false tolerance_value:spn_tol.value delete_empty:chk_del.checked ignore_frozen:chk_frz.checked
                 else messageBox "Select a valid volume first." title:"Trim Splines"
+                tmr_vol.active = true
+                updateVolumeLabel()
             )
 
             on btn_mass pressed do
             (
                 saveSettings()
+                tmr_vol.active = false
                 ::trimSplineByVolume.runMassMode quiet:false tolerance_value:spn_tol.value delete_empty:chk_del.checked ignore_frozen:chk_frz.checked
+                tmr_vol.active = true
+                updateVolumeLabel()
             )
         )
         
