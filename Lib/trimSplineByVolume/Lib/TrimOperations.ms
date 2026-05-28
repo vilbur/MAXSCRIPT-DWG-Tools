@@ -246,31 +246,46 @@ struct TrimOperations
 
     function generateSingleVolumeInCurrentLayer =
     (
+		
         undo "Generate Current Layer Volume" on
         (
             local target_layer = undefined
+			
             if (selection.count > 0 and isValidNode selection[1]) then
                 target_layer = selection[1].layer
             else
                 target_layer = LayerManager.current
-                
+            --format "TARGET_LAYER: %\n" target_layer
             if (target_layer != undefined) then
             (
-                local lay_name = target_layer.name
-                if (lay_name != "0") then
-                (
-                    local ex_vols = getVolumesInLayerTree target_layer
-                    if (ex_vols.count == 0) then
-                    (
-                        local a_nodes = collectAllNodesInLayerTree target_layer
-                        if (createVolumeFromNodes a_nodes lay_name is_layer:true target_layer:target_layer) then
-                            messageBox ("Generated volume for layer: " + lay_name) title:"Generate Volumes"
-                        else
-                            messageBox "No valid objects found in layer to calculate volume." title:"Generate Volumes"
-                    )
-                    else messageBox "Volume already exists in this layer tree." title:"Generate Volumes"
-                )
-                else messageBox "Cannot generate volume for default layer 0." title:"Generate Volumes"
+                --local lay_name = target_layer.name
+				
+				/* AUTO FIND LAYER TO GENRATE IF VURRENT LAYER IS DEFAULT ( uer friedlai front end function ) */ 
+                if (target_layer.name == "0") then
+				(
+					/* GET ENABLED TOP LAYERS */ 
+					visible_top_layers = for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i ).getParent() == undefined and layer.on collect layer
+					--format "visible_top_layers.count: %\n" visible_top_layers.count
+					if visible_top_layers.count > 0 then
+					(
+						/* SERACH FOR LAYER WITHOUT DUMMY */ 
+						layers_without_dummy = for visible_top_layer in visible_top_layers where (this.getVolumesInLayerTree visible_top_layer).count == 0 collect visible_top_layer 
+						
+						target_layer = if layers_without_dummy.count > 0 then layers_without_dummy[1] else visible_top_layers[1]
+						
+						target_layer.current  = true
+					)
+					
+				)
+				
+				local ex_vols = this.getVolumesInLayerTree target_layer
+				
+					local a_nodes = collectAllNodesInLayerTree target_layer
+					
+					if (createVolumeFromNodes a_nodes target_layer.name is_layer:true target_layer:target_layer) then
+						messageBox ("Generated volume for layer: " + target_layer.name) title:"Generate Volumes"
+					else
+						messageBox "No valid objects found in layer to calculate volume." title:"Generate Volumes"
             )
         )
     ),
