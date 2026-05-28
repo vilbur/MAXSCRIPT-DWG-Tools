@@ -37,6 +37,7 @@ buttonText:"Volume Trim"
 	
 	on execute do
 	(
+		clearListener(); print("Cleared in: "+getSourceFileName())
 		filein @"C:\Users\vilbur\AppData\Local\Autodesk\3dsMax\2023 - 64bit\ENU\scripts\MAXSCRIPT-DWG-Tools\Lib\trimSplineByVolume\trimSplineByVolume.ms"
 
 		--openCanvasTrimSplinesTool()

@@ -33,7 +33,7 @@ struct TrimUI
             
             group "Level 1: Trim Canvas"
             (
-                button btn_c "Create Canvas Volume" width:190 height:30 tooltip:"Centers at [0,0,0], ignores grouped objects and scales to tightly wrap 90% of the core spline density."
+                button btn_c "CLEAN UP CANVAS" width:190 height:30 tooltip:"Centers at [0,0,0], ignores grouped objects and scales to tightly wrap 90% of the core spline density."
                 button btn_rc "TRIM CANVAS (DELETE OUTSIDE)" width:190 height:30 tooltip:"Deletes all objects whose bounding box is completely outside the Canvas volume."
             )
             group "Level 2: Trim View"

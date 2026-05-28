@@ -9,7 +9,7 @@ global TrimApp_UI
 filein( getFilenamePath(getSourceFileName()) + "/Lib/TrimCore.ms" )	--"./Lib/TrimCore.ms"
 filein( getFilenamePath(getSourceFileName()) + "/Lib/TrimOperations.ms" )	--"./Lib/TrimOperations.ms"
 filein( getFilenamePath(getSourceFileName()) + "/Lib/TrimUI.ms" )	--"./Lib/TrimUI.ms"
-
+filein( getFilenamePath(getSourceFileName()) + "/Lib/bboxDataTools.ms" )	--"./Lib/bboxDataTools.ms"
 
 function trimGetNextDummy cur_name =
 (
