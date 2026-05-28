@@ -12,6 +12,7 @@ struct TrimOperations
             if (p_lay != undefined) then turnOnLayerChain p_lay
         )
     ),
+    
     function unhideLayerHierarchy lay_val =
     (
         lay_val.on = true
@@ -20,6 +21,7 @@ struct TrimOperations
         for n in l_nodes where isValidNode n do n.isHidden = false
         try ( for c = 1 to lay_val.getNumChildren() do unhideLayerHierarchy (lay_val.getChild c) ) catch()
     ),
+    
     function getVolumesInLayerTree lay_val =
     (
         local arr = #(), n_arr = #()
@@ -32,6 +34,7 @@ struct TrimOperations
         )
         arr
     ),
+    
     function collectAllNodesInLayerTree lay_val =
     (
         local arr = #(), n_arr = #()
@@ -44,6 +47,7 @@ struct TrimOperations
         )
         arr
     ),
+    
     function deleteAllNodesInLayerTree lay_val =
     (
         if (lay_val != undefined) then
@@ -54,6 +58,7 @@ struct TrimOperations
             for i = 1 to lay_val.getNumChildren() do deleteAllNodesInLayerTree (lay_val.getChild i)
         )
     ),
+    
     function deleteLayerTree lay_val =
     (
         if (lay_val != undefined and lay_val.name != "0") then
@@ -62,25 +67,35 @@ struct TrimOperations
             LayerManager.deleteLayerByName lay_val.name
         )
     ),
-    function getOrCreateLayer orig_lay lay_prefix lay_parent o_names n_lays =
+    
+    -- UPDATED: Replicates identical hierarchy, handles new naming conventions
+    function getOrCreateLayer orig_lay top_name o_names n_lays =
     (
         local idx = findItem o_names orig_lay.name
         if (idx > 0) then return n_lays[idx]
-        local n_name = lay_prefix + orig_lay.name
+        
+        local is_top = true
+        local p_lay = undefined
+        try ( p_lay = orig_lay.getParent(); if (p_lay != undefined) then is_top = false ) catch()
+        
+        -- Top layer takes dummy name exactly. Nested layers use Prefix + " - " + OriginalName
+        local n_name = if (is_top) then top_name else (top_name + " - " + orig_lay.name)
+        
         local n_lay = LayerManager.getLayerFromName n_name
         if (n_lay == undefined) then n_lay = LayerManager.newLayerFromName n_name
+        
         append o_names orig_lay.name; append n_lays n_lay
-        local p_lay = undefined
-        try ( p_lay = orig_lay.getParent() ) catch()
-        if (p_lay == undefined) then n_lay.setParent lay_parent
-        else
+        
+        if (not is_top) then
         (
-            local n_p_lay = getOrCreateLayer p_lay lay_prefix lay_parent o_names n_lays
+            local n_p_lay = getOrCreateLayer p_lay top_name o_names n_lays
             n_lay.setParent n_p_lay
         )
         n_lay
     ),
-    function recreateLayerTree o_nodes c_nodes prefix p_layer =
+    
+    -- UPDATED: Removed p_layer wrapper argument
+    function recreateLayerTree o_nodes c_nodes top_name =
     (
         local o_names = #(), n_layers = #()
         for i = 1 to o_nodes.count do
@@ -89,17 +104,19 @@ struct TrimOperations
             if (isValidNode c_n and isValidNode o_n) then
             (
                 c_n.name = o_n.name
-                local n_lay = getOrCreateLayer o_n.layer prefix p_layer o_names n_layers
+                local n_lay = getOrCreateLayer o_n.layer top_name o_names n_layers
                 n_lay.addNode c_n
             )
         )
     ),
+    
     function compareDist a b =
     (
         if (a[5] < b[5]) then -1
         else if (a[5] > b[5]) then 1
         else 0
     ),
+    
     function generateCanvasVolume =
     (
         undo "Generate Canvas" on
@@ -150,6 +167,7 @@ struct TrimOperations
             ) catch ()
         )
     ),
+    
     function trimCanvas quiet:false ignore_frz:true =
     (
         local c_node = getNodeByName "TRIM_CANVAS"
@@ -172,23 +190,16 @@ struct TrimOperations
                 if (is_out) then ( delete n; d_count += 1 )
             )
         )
-        
-		completeRedraw()
-		
-		delete c_node -- DELETE VOLUME DUMMY
-		
+        if (not quiet) then completeRedraw()
         if (not quiet) then messageBox ("Canvas Trim Complete.\nDeleted: " + d_count as string) title:"Trim Canvas"
-		
-		
-		
     ),
+    
     function generateVolumes =
     (
         undo "Generate Volumes" on
         (
             local s_nodes = for n in selection where (isValidNode n and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) collect n
-           
-		    if (s_nodes.count > 0) then
+            if (s_nodes.count > 0) then
             (
                 local min_p = [1e9, 1e9, 1e9], max_p = [-1e9, -1e9, -1e9], valid_b = false
                 for n in s_nodes do
@@ -211,45 +222,33 @@ struct TrimOperations
             else
             (
                 local g_count = 0
-				
                 for i = 0 to LayerManager.count - 1 do
                 (
                     local lay = LayerManager.getLayer i
-					format "\nlay.name: %\n" lay.name
-                
-				    if (lay.on and lay.name != "0") then
+                    if (lay.on and lay.name != "0") then
                     (
                         local is_top = true
                         try ( if (lay.getParent() != undefined) then is_top = false ) catch()
-						
                         if (is_top) then
                         (
                             local ex_vols = getVolumesInLayerTree lay
-
                             if (ex_vols.count == 0) then
                             (
                                 local a_nodes = #(), min_p = [1e9, 1e9, 1e9], max_p = [-1e9, -1e9, -1e9], valid_b = false
                                 lay.nodes &a_nodes
-                               format "ex_vols: %\n" ex_vols
-							   /* FOR AI: COMMENT WHAT IS HAPPENNIG HERE */ 
-							    for n in a_nodes where (isValidNode n and n.name != lay.name and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) do
+                                for n in a_nodes where (isValidNode n and n.name != lay.name and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) do
                                 (
                                     local bb = nodeGetBoundingBox n (matrix3 1)
                                     if (bb[1].x < min_p.x) then min_p.x = bb[1].x; if (bb[1].y < min_p.y) then min_p.y = bb[1].y; if (bb[1].z < min_p.z) then min_p.z = bb[1].z
                                     if (bb[2].x > max_p.x) then max_p.x = bb[2].x; if (bb[2].y > max_p.y) then max_p.y = bb[2].y; if (bb[2].z > max_p.z) then max_p.z = bb[2].z
                                     valid_b = true
                                 )
-								--format "valid_b: %\n" valid_b
-								
-								/* AI: if contdition disabled, it block generation for no reason */ 
-                                --if (valid_b) then
+                                if (valid_b) then
                                 (
                                     local cent = (min_p + max_p) / 2.0, sz = max_p - min_p, h_size = (sz.x + sz.y) / 4.0
-                                    if (h_size <= 0) then h_size = 10.0
+                                    if (h_size <= 0) then h_size = 1.0
                                     local l_col = color 255 255 255; try (l_col = lay.wireColor) catch()
-									
-                                    local d = VolumeHelper name:lay.name pos:cent size:h_size color:l_col; lay.addNode d; g_count += 1
-                                    --try ( local d = VolumeHelper name:lay.name pos:cent size:h_size color:l_col; lay.addNode d; g_count += 1 ) catch ()
+                                    try ( local d = VolumeHelper name:lay.name pos:cent size:h_size color:l_col; lay.addNode d; g_count += 1 ) catch ()
                                 )
                             )
                         )
@@ -259,6 +258,7 @@ struct TrimOperations
             )
         )
     ),
+    
     function runMassMode quiet:false tol_val:0.001 del_empty:true ignore_frz:true =
     (
         local t_lays = #()
@@ -292,13 +292,24 @@ struct TrimOperations
                 (
                     local v_n = v_arr[v_idx]; append a_vols v_n
                     if (not quiet) then (format "\rMass Mode: '%'..." v_n.name; windows.processPostedMessages())
-                    local p_lay = LayerManager.getLayerFromName v_n.name
-                    if (p_lay == undefined) then p_lay = LayerManager.newLayerFromName v_n.name
+                    
+                    local top_name = v_n.name
+                    
+                    -- UPDATED: Recreate layer tree passing the dummy name directly for hierarchy mapping
                     local c_out = #()
-                    if (c_nodes.count > 0) then ( maxOps.cloneNodes c_nodes cloneType:#copy newNodes:&c_out; recreateLayerTree c_nodes c_out (v_n.name + "_") p_lay )
-                    p_lay.addNode v_n
+                    if (c_nodes.count > 0) then 
+                    ( 
+                        maxOps.cloneNodes c_nodes cloneType:#copy newNodes:&c_out
+                        recreateLayerTree c_nodes c_out top_name 
+                    )
+                    
+                    -- Add the volume dummy itself into its newly created top-level layer
+                    local dummy_layer = LayerManager.getLayerFromName top_name
+                    if (dummy_layer == undefined) then dummy_layer = LayerManager.newLayerFromName top_name
+                    dummy_layer.addNode v_n
+                    
                     for i = 0 to LayerManager.count - 1 do (LayerManager.getLayer i).on = false
-                    turnOnLayerChain p_lay; unhideLayerHierarchy p_lay
+                    turnOnLayerChain dummy_layer; unhideLayerHierarchy dummy_layer
                     local res = core.run v_n quiet:true tol_val:tol_val del_empty:del_empty ignore_frz:ignore_frz
                     if (res != undefined) then ( t_p += res[1]; t_dk += res[3] )
                 )

@@ -23,7 +23,8 @@ buttonText:"MassImporter"
 	on execute do
 	(
 		filein @"C:\Users\vilbur\AppData\Local\Autodesk\3dsMax\2023 - 64bit\ENU\scripts\MAXSCRIPT-DWG-Tools\Lib\DwgMassImporter\DwgMassImporter.ms"
-
+		
+		LayerManager.editLayerByName "0"
 		--(DwgMassImporter_Main()).run()
 	)
 )
