@@ -16,8 +16,7 @@ struct TrimCore
     (
         if (isValidNode node_val and node_val.name != "TRIM_CANVAS" and node_val.name != "TRIM_SELECTION") then
         (
-            local c_str = (classOf node_val) as string
-            if (c_str == "VolumeHelper" or superClassOf node_val == helper) then return true
+            if (classOf node_val == Dummy) then return true
         )
         return false
     ),

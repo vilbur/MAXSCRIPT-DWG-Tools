@@ -49,18 +49,30 @@ function trimHandleCloned =
     if (cb_p != undefined and cb_p.count >= 2) then
     (
         local o_n = cb_p[1], n_n = cb_p[2]
+        local rx = dotNetClass "System.Text.RegularExpressions.Regex"
+        
         for i = 1 to n_n.count do
         (
             local n = n_n[i]
             if (isValidNode n and ::TrimApp_Core.isVolumeDummy n) then
             (
-                local b_name = if (isValidNode o_n[i]) then o_n[i].name else n.name
-                n.name = trimGetUniqueDummy b_name
+                if (isValidNode o_n[i]) then
+                (
+                    -- Strip trailing numbers to compare base names
+                    local base_orig = rx.Replace o_n[i].name "[0-9]+$" ""
+                    local base_new = rx.Replace n.name "[0-9]+$" ""
+                    
+                    -- If base names match, user accepted Max's default clone name. Apply custom rename.
+                    -- If they don't match, user typed a custom name in the clone dialog, so leave it alone.
+                    if (base_orig == base_new) then
+                    (
+                        n.name = trimGetUniqueDummy o_n[i].name
+                    )
+                )
             )
         )
     )
 )
-
 /** Open canvas trim splines tool
  */
 function openCanvasTrimSplinesTool =

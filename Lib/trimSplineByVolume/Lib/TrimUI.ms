@@ -33,22 +33,22 @@ struct TrimUI
             
             group "Level 1: Trim Canvas"
             (
-                button btn_c "Create Canvas Volume" width:190 height:30
-                button btn_rc "TRIM CANVAS (DELETE OUTSIDE)" width:190 height:30
+                button btn_c "Create Canvas Volume" width:190 height:30 tooltip:"Centers at [0,0,0], ignores grouped objects and scales to tightly wrap 90% of the core spline density."
+                button btn_rc "TRIM CANVAS (DELETE OUTSIDE)" width:190 height:30 tooltip:"Deletes all objects whose bounding box is completely outside the Canvas volume."
             )
             group "Level 2: Trim View"
             (
-                dotNetControl lbl_v "System.Windows.Forms.Label" width:190 height:24 align:#center
+                dotNetControl lbl_v "System.Windows.Forms.Label" width:190 height:24 align:#center tooltip:"Auto-detected layer volume status"
                 timer tmr_v "Vol Ticker" interval:500 active:true
-                button btn_g "Generate Volumes" width:190 height:30
-                button btn_r "TRIM SPLINES (SINGLE)" width:190 height:30
-                button btn_m "MASS MODE (ALL LAYERS)" width:190 height:30
+                button btn_g "Generate Volumes" width:190 height:30 tooltip:"Left-Click: Single Volume in Current/Selected Layer\nRight-Click: Auto-gen Volumes for all Visible Layers"
+                button btn_r "TRIM SPLINES (SINGLE)" width:190 height:30 tooltip:"Trim all valid splines using the active volume"
+                button btn_m "MASS MODE (ALL LAYERS)" width:190 height:30 tooltip:"Iterate layers, isolating volumes for processing. Deletes original trees if multiple dummies exist."
             )
             group "Settings"
             (
-                spinner spn_t "Tolerance: " range:[0.00001, 1000.0, 0.001] scale:0.00001 type:#float align:#center
-                checkbox chk_d "Delete Empty Splines" checked:true align:#center
-                checkbox chk_f "Ignore Frozen Objects" checked:true align:#center
+                spinner spn_t "Tolerance: " range:[0.00001, 1000.0, 0.001] scale:0.00001 type:#float align:#center tooltip:"Threshold for Knot bounding & Auto-Weld"
+                checkbox chk_d "Delete Empty Splines" checked:true align:#center tooltip:"Delete completely empty remaining splines"
+                checkbox chk_f "Ignore Frozen Objects" checked:true align:#center tooltip:"Skip processing frozen objects"
             )
             
             function updateVolumeLabel =
@@ -87,6 +87,7 @@ struct TrimUI
             )
             
             on tmr_v tick do updateVolumeLabel()
+            
             on ro_trimSplineByVolume open do
             (
                 ro_trimSplineByVolume.title = "Trim Splines " + ::TrimGlobalApp[3]
@@ -94,10 +95,17 @@ struct TrimUI
                 lbl_v.Font = dotNetObject "System.Drawing.Font" "Arial" 8 (dotNetClass "System.Drawing.FontStyle").Bold; lbl_v.BackColor = (dotNetClass "System.Drawing.Color").FromArgb 40 40 40
                 loadSet(); updateVolumeLabel()
             )
+            
             on ro_trimSplineByVolume close do saveSet()
+            
             on btn_c pressed do ::TrimGlobalApp[2].generateCanvasVolume()
+            
             on btn_rc pressed do ( saveSet(); ::TrimGlobalApp[2].trimCanvas quiet:false ignore_frz:chk_f.checked )
-            on btn_g pressed do ( tmr_v.active = false; ::TrimGlobalApp[2].generateVolumes(); tmr_v.active = true; updateVolumeLabel() )
+            
+            on btn_g pressed do ( tmr_v.active = false; ::TrimGlobalApp[2].generateSingleVolumeInCurrentLayer(); tmr_v.active = true; updateVolumeLabel() )
+            
+            on btn_g rightClick do ( tmr_v.active = false; ::TrimGlobalApp[2].generateVolumes(); tmr_v.active = true; updateVolumeLabel() )
+            
             on spn_t changed val do
             (
                 spn_t.value = if val > l_tol then l_tol * 10.0 else l_tol / 10.0
@@ -105,6 +113,7 @@ struct TrimUI
                 if (spn_t.value < 0.00001) then spn_t.value = 0.00001
                 l_tol = spn_t.value
             )
+            
             on btn_r pressed do
             (
                 saveSet(); tmr_v.active = false
@@ -112,6 +121,7 @@ struct TrimUI
                 else messageBox "Select a valid volume first." title:"Trim Splines"
                 tmr_v.active = true; updateVolumeLabel()
             )
+            
             on btn_m pressed do
             (
                 saveSet(); tmr_v.active = false

@@ -176,11 +176,11 @@ struct TrimOperations
                     if (a_knots >= t_target) then exit
                 )
                 local m_ext = amax (abs min_p.x) (abs min_p.y) (abs min_p.z) (abs max_p.x) (abs max_p.y) (abs max_p.z)
-                h_size = m_ext * 1.05 
+                h_size = m_ext * 2.1
                 if (h_size <= 0) then h_size = 500.0
             )
             try (
-                local d = VolumeHelper name:"TRIM_CANVAS" pos:[0,0,0] size:h_size color:(color 255 128 0)
+                local d = Dummy name:"TRIM_CANVAS" pos:[0,0,0] boxsize:[h_size, h_size, 10.0] wirecolor:(color 255 128 0)
                 if (d_layer != undefined) then d_layer.addNode d
                 select d; actionMan.executeAction 0 "311"
             ) catch ()
@@ -213,6 +213,76 @@ struct TrimOperations
         if (not quiet) then messageBox ("Canvas Trim Complete.\nDeleted: " + d_count as string) title:"Trim Canvas"
     ),
     
+    function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined =
+    (
+        local min_p = [1e9, 1e9, 1e9], max_p = [-1e9, -1e9, -1e9], valid_b = false
+        for n in n_arr where (isValidNode n and n.name != vol_name and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) do
+        (
+            local bb = nodeGetBoundingBox n (matrix3 1)
+            if (bb[1].x < min_p.x) then min_p.x = bb[1].x; if (bb[1].y < min_p.y) then min_p.y = bb[1].y; if (bb[1].z < min_p.z) then min_p.z = bb[1].z
+            if (bb[2].x > max_p.x) then max_p.x = bb[2].x; if (bb[2].y > max_p.y) then max_p.y = bb[2].y; if (bb[2].z > max_p.z) then max_p.z = bb[2].z
+            valid_b = true
+        )
+        if (valid_b) then
+        (
+            local exist = getNodeByName vol_name
+            if (isValidNode exist) then delete exist
+            
+            local cent = (min_p + max_p) / 2.0, sz = max_p - min_p
+            local h_size = amax sz.x sz.y
+            if (h_size <= 0) then h_size = 1.0
+            
+            local l_col = color 0 255 0
+            if (is_layer and target_layer != undefined) then try (l_col = target_layer.wireColor) catch()
+            
+            try (
+                local d = Dummy name:vol_name pos:cent boxsize:[h_size, h_size, 10.0] wirecolor:l_col
+                if (is_layer and target_layer != undefined) then target_layer.addNode d else select d
+                return true
+            ) catch ()
+        )
+        return false
+    ),
+
+    function generateSingleVolumeInCurrentLayer =
+    (
+        undo "Generate Current Layer Volume" on
+        (
+            local target_layer = undefined
+            if (selection.count > 0 and isValidNode selection[1]) then
+                target_layer = selection[1].layer
+            else
+                target_layer = LayerManager.current
+                
+            if (target_layer != undefined) then
+            (
+                local lay_name = target_layer.name
+                if (lay_name != "0") then
+                (
+                    local ex_vols = getVolumesInLayerTree target_layer
+                    if (ex_vols.count == 0) then
+                    (
+                        local a_nodes = collectAllNodesInLayerTree target_layer
+                        if (createVolumeFromNodes a_nodes lay_name is_layer:true target_layer:target_layer) then
+                            messageBox ("Generated volume for layer: " + lay_name) title:"Generate Volumes"
+                        else
+                            messageBox "No valid objects found in layer to calculate volume." title:"Generate Volumes"
+                    )
+                    else messageBox "Volume already exists in this layer tree." title:"Generate Volumes"
+                )
+                else messageBox "Cannot generate volume for default layer 0." title:"Generate Volumes"
+            )
+        )
+    ),
+
+function getTopLayer lay_val =
+    (
+        local p_lay = undefined
+        try ( p_lay = lay_val.getParent() ) catch()
+        if (p_lay != undefined) then return getTopLayer p_lay
+        return lay_val
+    ),
+
     function generateVolumes =
     (
         undo "Generate Volumes" on
@@ -234,7 +304,12 @@ struct TrimOperations
                     if (isValidNode exist) then delete exist
                     local cent = (min_p + max_p) / 2.0, sz = max_p - min_p, h_size = (sz.x + sz.y) / 4.0
                     if (h_size <= 0) then h_size = 1.0
-                    try ( local d = VolumeHelper name:"TRIM_SELECTION" pos:cent size:h_size color:(color 0 255 0); select d ) catch ()
+                    try ( 
+                        local d = VolumeHelper name:"TRIM_SELECTION" pos:cent size:h_size color:(color 0 255 0)
+                        local t_lay = getTopLayer s_nodes[1].layer
+                        t_lay.addNode d
+                        select d 
+                    ) catch ()
                 )
                 messageBox "Generated single volume for selected objects." title:"Generate Volumes"
             )
@@ -246,14 +321,15 @@ struct TrimOperations
                     local lay = LayerManager.getLayer i
                     if (lay.on and lay.name != "0") then
                     (
-                        if (isTopLayer lay.name) then
+                        local is_top = true
+                        try ( if (lay.getParent() != undefined) then is_top = false ) catch()
+                        if (is_top) then
                         (
                             local ex_vols = getVolumesInLayerTree lay
                             if (ex_vols.count == 0) then
                             (
                                 local a_nodes = collectAllNodesInLayerTree lay
                                 local min_p = [1e9, 1e9, 1e9], max_p = [-1e9, -1e9, -1e9], valid_b = false
-                                
                                 for n in a_nodes where (isValidNode n and n.name != lay.name and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) do
                                 (
                                     local bb = nodeGetBoundingBox n (matrix3 1)
@@ -266,7 +342,11 @@ struct TrimOperations
                                     local cent = (min_p + max_p) / 2.0, sz = max_p - min_p, h_size = (sz.x + sz.y) / 4.0
                                     if (h_size <= 0) then h_size = 1.0
                                     local l_col = color 255 255 255; try (l_col = lay.wireColor) catch()
-                                    try ( local d = VolumeHelper name:lay.name pos:cent size:h_size color:l_col; lay.addNode d; g_count += 1 ) catch ()
+                                    try ( 
+                                        local d = VolumeHelper name:lay.name pos:cent size:h_size color:l_col
+                                        lay.addNode d
+                                        g_count += 1 
+                                    ) catch ()
                                 )
                             )
                         )
@@ -277,6 +357,8 @@ struct TrimOperations
         )
     ),
     
+
+
     function runMassMode quiet:false tol_val:0.001 del_empty:true ignore_frz:true =
     (
         local t_lays = #()
