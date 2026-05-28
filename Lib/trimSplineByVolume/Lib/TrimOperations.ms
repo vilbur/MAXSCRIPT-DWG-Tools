@@ -225,51 +225,55 @@ struct TrimOperations
        ),
 
     function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined =
-        (
+    (
+		result = false
+
+		target_layer = this._getTargetLayer()
+		
+		format "target_layer.name: %\n" target_layer.name
+		(
+			local exist_dummy = getNodeByName target_layer.name
+
+			if (isValidNode exist_dummy and core.isVolumeDummy exist_dummy ) then delete exist_dummy
 
 
-            result = false
+			average_bbox_data = this._geSizeAndPosOfDummy()
 
-            target_layer = this._getTargetLayer()
-            format "target_layer.name: %\n" target_layer.name
-            (
-                local exist_dummy = getNodeByName target_layer.name
-
-                if (isValidNode exist_dummy and core.isVolumeDummy exist_dummy ) then delete exist_dummy
-
-
-                average_bbox_data = this._geSizeAndPosOfDummy()
-
-                size = average_bbox_data[1]
-                cent = average_bbox_data[2]
-
-
-                --median_bbox_data = bboxDataTools.getMedianBBoxData get_average_size_of
-                --size = median_bbox_data[1]
-                --cent = median_bbox_data[2]
-
-                top_layer = getTopLayer target_layer
-
-                local l_col = color 0 255 0
+			size = average_bbox_data[1]
+			cent = average_bbox_data[2]
 
 
 
-                    /* CREATE DUMMY */
-                    local d = VolumeHelper name:top_layer.name pos:cent size:1 wirecolor:top_layer.wireColor
+			--median_bbox_data = bboxDataTools.getMedianBBoxData get_average_size_of
+			--size = median_bbox_data[1]
+			--cent = median_bbox_data[2]
 
-                    append new_dummies d
+			obj = selection[1]
+			
+			top_layer = getTopLayer target_layer
+			
+			dummy_is_selected = selection.count == 1 and core.isVolumeDummy obj 
 
-                    /* SET DUMMY SCALE */
-                    d.scale = size
+				
+			local l_col =  if dummy_is_selected then obj.color else top_layer.wireColor
+		
 
-                    d.scale.z = 10
+			/* CREATE DUMMY */
+			local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:l_col color:l_col
+
+			append new_dummies d
+
+			/* SET DUMMY SCALE */
+			d.scale = size
+
+			d.scale.z = 10
 
 
-                   top_layer.addNode d
+		   top_layer.addNode d
 
-                    result = true
+			result = true
 
-            )
+		)
 
             result --return
         ),
@@ -283,6 +287,7 @@ struct TrimOperations
             undo "Generate Current Layer Volume" on
             (
 
+			obj	= selection[1]
                 --format "TARGET_LAYER: %\n" target_layer
             target_layer = this._getTargetLayer()
 
@@ -315,7 +320,14 @@ struct TrimOperations
 
                         local a_nodes = collectAllNodesInLayerTree target_layer
 
-                        if not (createVolumeFromNodes a_nodes target_layer.name is_layer:true target_layer:target_layer) then
+						format "selection.count == 1: %\n" (selection.count == 1)
+						format "core.isVolumeDummy obj: %\n" (core.isVolumeDummy obj)
+						
+						/* GET NAME  BY SELECTED DUMMY OR BAY TOP LAYER */ 
+						vol_name = if selection.count == 1  and core.isVolumeDummy obj  then trimGetUniqueDummy obj.name else target_layer.name
+						
+						
+                        if not (createVolumeFromNodes a_nodes vol_name is_layer:true target_layer:target_layer) then
                             messageBox ("A No valid objects found to calculate volume.\n\nIn layer:\n\n"+target_layer.name) title:"Generate Volumes"
                         else
                             FORMAT "GENERATED VOLUME FOR LAYER: %"  target_layer.name
@@ -517,3 +529,4 @@ struct TrimOperations
     (
     )
 )
+
