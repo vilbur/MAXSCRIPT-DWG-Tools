@@ -2,13 +2,36 @@ struct TrimOperations
 (
     core = undefined,
     
+    function getParentLayer lay_name =
+    (
+        for i = 0 to LayerManager.count - 1 do
+        (
+            local p = LayerManager.getLayer i
+            if (p != undefined) do
+            (
+                try (
+                    for c = 1 to p.getNumChildren() do
+                    (
+                        local child = p.getChild c
+                        if (child != undefined and child.name == lay_name) then return p
+                    )
+                ) catch()
+            )
+        )
+        return undefined
+    ),
+
+    function isTopLayer lay_name =
+    (
+        return ((getParentLayer lay_name) == undefined)
+    ),
+    
     function turnOnLayerChain lay_val =
     (
         if (lay_val != undefined) then
         (
             lay_val.on = true
-            local p_lay = undefined
-            try ( p_lay = lay_val.getParent() ) catch()
+            local p_lay = getParentLayer lay_val.name
             if (p_lay != undefined) then turnOnLayerChain p_lay
         )
     ),
@@ -68,17 +91,14 @@ struct TrimOperations
         )
     ),
     
-    -- UPDATED: Replicates identical hierarchy, handles new naming conventions
     function getOrCreateLayer orig_lay top_name o_names n_lays =
     (
         local idx = findItem o_names orig_lay.name
         if (idx > 0) then return n_lays[idx]
         
-        local is_top = true
-        local p_lay = undefined
-        try ( p_lay = orig_lay.getParent(); if (p_lay != undefined) then is_top = false ) catch()
+        local is_top = isTopLayer orig_lay.name
+        local p_lay = getParentLayer orig_lay.name
         
-        -- Top layer takes dummy name exactly. Nested layers use Prefix + " - " + OriginalName
         local n_name = if (is_top) then top_name else (top_name + " - " + orig_lay.name)
         
         local n_lay = LayerManager.getLayerFromName n_name
@@ -86,7 +106,7 @@ struct TrimOperations
         
         append o_names orig_lay.name; append n_lays n_lay
         
-        if (not is_top) then
+        if (p_lay != undefined) then
         (
             local n_p_lay = getOrCreateLayer p_lay top_name o_names n_lays
             n_lay.setParent n_p_lay
@@ -94,7 +114,6 @@ struct TrimOperations
         n_lay
     ),
     
-    -- UPDATED: Removed p_layer wrapper argument
     function recreateLayerTree o_nodes c_nodes top_name =
     (
         local o_names = #(), n_layers = #()
@@ -227,15 +246,14 @@ struct TrimOperations
                     local lay = LayerManager.getLayer i
                     if (lay.on and lay.name != "0") then
                     (
-                        local is_top = true
-                        try ( if (lay.getParent() != undefined) then is_top = false ) catch()
-                        if (is_top) then
+                        if (isTopLayer lay.name) then
                         (
                             local ex_vols = getVolumesInLayerTree lay
                             if (ex_vols.count == 0) then
                             (
-                                local a_nodes = #(), min_p = [1e9, 1e9, 1e9], max_p = [-1e9, -1e9, -1e9], valid_b = false
-                                lay.nodes &a_nodes
+                                local a_nodes = collectAllNodesInLayerTree lay
+                                local min_p = [1e9, 1e9, 1e9], max_p = [-1e9, -1e9, -1e9], valid_b = false
+                                
                                 for n in a_nodes where (isValidNode n and n.name != lay.name and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) do
                                 (
                                     local bb = nodeGetBoundingBox n (matrix3 1)
@@ -265,11 +283,11 @@ struct TrimOperations
         for i = 0 to LayerManager.count - 1 do
         (
             local lay = LayerManager.getLayer i
-            local is_top = true
-            try ( if (lay.getParent() != undefined) then is_top = false ) catch()
-            if (is_top and lay.name != "0" and findString lay.name "_TO_DELETE_" == undefined) then append t_lays lay
+            if (lay.name != "0" and findString lay.name "_TO_DELETE_" == undefined and isTopLayer lay.name) then append t_lays lay
         )
+        
         local t_p = 0, t_dk = 0, a_vols = #()
+        
         for t_lay in t_lays do
         (
             local v_arr = getVolumesInLayerTree t_lay
@@ -288,6 +306,7 @@ struct TrimOperations
                 t_lay.setname (o_n + "_TO_DELETE_" + (timestamp() as string))
                 local a_nodes = collectAllNodesInLayerTree t_lay
                 local c_nodes = for n in a_nodes where (findItem v_arr n == 0) collect n
+                
                 for v_idx = 1 to v_arr.count do
                 (
                     local v_n = v_arr[v_idx]; append a_vols v_n
@@ -295,7 +314,6 @@ struct TrimOperations
                     
                     local top_name = v_n.name
                     
-                    -- UPDATED: Recreate layer tree passing the dummy name directly for hierarchy mapping
                     local c_out = #()
                     if (c_nodes.count > 0) then 
                     ( 
@@ -303,7 +321,6 @@ struct TrimOperations
                         recreateLayerTree c_nodes c_out top_name 
                     )
                     
-                    -- Add the volume dummy itself into its newly created top-level layer
                     local dummy_layer = LayerManager.getLayerFromName top_name
                     if (dummy_layer == undefined) then dummy_layer = LayerManager.newLayerFromName top_name
                     dummy_layer.addNode v_n
