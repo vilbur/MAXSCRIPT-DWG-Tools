@@ -1,4 +1,4 @@
-clearListener(); print("Cleared in:\n"+getSourceFileName())
+--clearListener(); print("Cleared in:\n"+getSourceFileName())
 
 global tv_rollout
 global DIALOG_dwgtools
@@ -30,41 +30,48 @@ filein( getFilenamePath(getSourceFileName()) + "/loadContentAndCreateDialog.ms" 
 filein( getFilenamePath(getSourceFileName()) + "/dwgToolsDialog.ms" )	--"./dwgToolsDialog.ms"
 
 
-LayerManager.editLayerByName "0"
-
-/*------------------------------------------------------------------------------
-	CREATE DIALOG
---------------------------------------------------------------------------------*/
-
-LAYER_MANAGER_APP = LayerManagerApp()
-
-
-Dialog = undefined
-dialog_width = 320
-
-/* LAOD CONTENT & CREATE DIALOG */ 
---Dialog = loadContentAndCreateDialog width:dialog_width
-
---format "classOf Dialog: %\n" ( classOf Dialog )
---format "Dialog._Controls.count: %\n" Dialog._Controls.count
-
-/* MODIFY DIALOG */ 
-Dialog = dwgToolsDialog Dialog:Dialog width:dialog_width ini:(getSourceFileName())
---format "Dialog._Controls.count: %\n" Dialog._Controls.count
-
-/* CREATE DIALOG */ 
---Dialog.create()
---Dialog.create height:undefined --width:dialog_width
---
---
-----rollout rollout_test "Test"
-----(
-----	button btn_test "Press Me"
-----	--on test rolledUp state do
-----	--if state then print "Rolled Down!" else print "Rolled Up!"
-----)
---
---layerTreeGenerator layer_names
---
---AddSubRollout DIALOG_dwgtools.subrollouts_1 tv_rollout
-
+/** Open dwg layer manager
+ */
+function openDwgLayerManager =
+(
+	--format "\n"; print ".openDwgLayerManager()"
+	
+	LayerManager.editLayerByName "0"
+	
+	/*------------------------------------------------------------------------------
+		CREATE DIALOG
+	--------------------------------------------------------------------------------*/
+	
+	LAYER_MANAGER_APP = LayerManagerApp()
+	
+	
+	Dialog = undefined
+	dialog_width = 320
+	
+	/* LAOD CONTENT & CREATE DIALOG */ 
+	--Dialog = loadContentAndCreateDialog width:dialog_width
+	
+	--format "classOf Dialog: %\n" ( classOf Dialog )
+	--format "Dialog._Controls.count: %\n" Dialog._Controls.count
+	
+	/* MODIFY DIALOG */ 
+	Dialog = dwgToolsDialog Dialog:Dialog width:dialog_width ini:(getSourceFileName())
+	--format "Dialog._Controls.count: %\n" Dialog._Controls.count
+	
+	/* CREATE DIALOG */ 
+	--Dialog.create()
+	--Dialog.create height:undefined --width:dialog_width
+	--
+	--
+	----rollout rollout_test "Test"
+	----(
+	----	button btn_test "Press Me"
+	----	--on test rolledUp state do
+	----	--if state then print "Rolled Down!" else print "Rolled Up!"
+	----)
+	--
+	--layerTreeGenerator layer_names
+	--
+	--AddSubRollout DIALOG_dwgtools.subrollouts_1 tv_rollout
+	
+)

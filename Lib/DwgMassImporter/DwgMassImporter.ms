@@ -2,19 +2,19 @@ filein( getFilenamePath(getSourceFileName()) + "/Lib/ExtractBottomSplines.ms" )	
 filein( getFilenamePath(getSourceFileName()) + "/Lib/DwgMassImporter_Methods.ms" )	--"./Lib/DwgMassImporter_Methods.ms"
 filein( getFilenamePath(getSourceFileName()) + "/Lib/DwgMassImporter_UI.ms" )	--"./Lib/DwgMassImporter_UI.ms"
 filein( getFilenamePath(getSourceFileName()) + "/Lib/resetVievporWorkaround.ms" )	--"./Lib/resetVievporWorkaround.ms"
+--filein( getFilenamePath(getSourceFileName()) + "/Lib/configDwgImporter.ms" )	--"./Lib/configDwgImporter.ms"
 
 /*
     Description: Main execution file for DWG Mass Importer
-    Version: 0.55
+    Version: 0.60
 */
-
-
 
 struct DwgMassImporter_Settings (
     regex_search = "^.*?_",
     regex_replace = "",
     group_objects = false,
     fix_flatten_mesh = true,
+    show_prompt = false,
     ini_file = (getDir #userscripts) + "\\DwgMassImporter.ini"
 )
 
@@ -33,13 +33,17 @@ struct DwgMassImporter_Main (
         if (not ui.askRegexSettings()) do return false
         
         local target_dir = ui.getImportDirectory()
-        if (target_dir == undefined) do (
+		
+        if (target_dir == undefined) do
+		(
             messageBox "No folder selected."
             return false
         )
         
         local dwg_files = getFiles (target_dir + "\\*.dwg")
-        if (dwg_files.count == 0) do (
+		
+        if (dwg_files.count == 0) do
+		(
             messageBox "No DWG files found."
             return false
         )
@@ -48,15 +52,17 @@ struct DwgMassImporter_Main (
         
         if (dwg_files.count > 1) do (
             files_to_import = ui.askFilesToImport dwg_files
-            if (files_to_import.count == 0) do return false
+			
+            if (files_to_import.count == 0) do
+				return false
         )
 		
         disableSceneRedraw()
         
 		
-        for f in files_to_import do (
-            methods.importDwgFile f
-        )
+        for i = 1 to files_to_import.count do 
+            methods.importDwgFile files_to_import[i] is_first:(i == 1) prefix_layers:( files_to_import.count > 1 )
+        
 		
         enableSceneRedraw()
 		
@@ -65,12 +71,16 @@ struct DwgMassImporter_Main (
         resetVievporWorkaround()
 
         -- Open Layer Explorer on end of import
-        try(macros.run "Scene Explorer" "LayerExplorer") catch(try(macros.run "Layers" "LayerManager")catch())
-        
+		layermanager.editLayerByName "0"
+		
         --messageBox ("Import completed successfully!\n\nImported DWG files: " + (files_to_import.count as string))
-		format "\nIMPORTED DWG FILES: %" (files_to_import.count as string))
+		format "\nIMPORTED DWG FILES: %" (files_to_import.count as string)
     )
 )
+/* Execute
 
--- 5. Execute
+	(DwgMassImporter_Main()).run()
+
+*/ 
+
 (DwgMassImporter_Main()).run()

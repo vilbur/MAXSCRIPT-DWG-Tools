@@ -1,15 +1,43 @@
-macroscript DwgTools_open
-category:	"_DwgTools"
-buttontext:	"DwgTools"
-toolTip:	"Open DwgTools"
+
+macroscript _DwgTools_Main
+category:"_DwgTools"
+tooltip:"Dwg Layers"
+buttonText:"Dwg Layers"
 (
-	filein @"$userscripts\MAXSCRIPT-DWG-Tools\DwgTools.ms" --"./DwgTools.ms"
+	on execute do
+	(
+		filein @"C:\Users\vilbur\AppData\Local\Autodesk\3dsMax\2023 - 64bit\ENU\scripts\MAXSCRIPT-DWG-Tools\DwgTools.ms"
+
+		--openDwgLayerManager()
+	)
 )
 
 
-/*------------------------------------------------------------------------------
-	TEST
-	
---------------------------------------------------------------------------------*/
 
-macros.run "_DwgTools" "DwgTools_open"
+macroscript _DwgTools_MassImporter
+category:"_DwgTools"
+tooltip:"DWG Mass Import"
+buttonText:"MassImporter"
+(
+	
+	on execute do
+	(
+		filein @"C:\Users\vilbur\AppData\Local\Autodesk\3dsMax\2023 - 64bit\ENU\scripts\MAXSCRIPT-DWG-Tools\Lib\DwgMassImporter\DwgMassImporter.ms"
+
+		--(DwgMassImporter_Main()).run()
+	)
+)
+
+macroscript _DwgTools_TrimSpline
+category:"_DwgTools"
+tooltip:"Volume Trim"
+buttonText:"Volume Trim"
+(
+	
+	on execute do
+	(
+		filein @"C:\Users\vilbur\AppData\Local\Autodesk\3dsMax\2023 - 64bit\ENU\scripts\MAXSCRIPT-DWG-Tools\Lib\trimSplineByVolume\trimSplineByVolume.ms"
+
+		--openCanvasTrimSplinesTool()
+	)
+)
