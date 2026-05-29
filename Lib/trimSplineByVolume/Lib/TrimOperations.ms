@@ -224,7 +224,7 @@ struct TrimOperations
             layer_item --return
        ),
 
-    function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined =
+    function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined wirecolor:undefined =
     (
 		result = false
 
@@ -237,7 +237,7 @@ struct TrimOperations
 			if (isValidNode exist_dummy and core.isVolumeDummy exist_dummy ) then delete exist_dummy
 
 
-			average_bbox_data = this._geSizeAndPosOfDummy()
+			average_bbox_data = this._geSizeAndPosOfDummy(n_arr)
 
 			size = average_bbox_data[1]
 			cent = average_bbox_data[2]
@@ -252,19 +252,21 @@ struct TrimOperations
 			
 			top_layer = getTopLayer target_layer
 			
-			dummy_is_selected = selection.count == 1 and core.isVolumeDummy obj 
 
-				
-			local l_col =  if dummy_is_selected then obj.color else top_layer.wireColor
+			if wirecolor == undefined then
+				wirecolor = top_layer.wireColor
 		
-
+			if vol_name == undefined then
+				vol_name = top_layer.name
+		
 			/* CREATE DUMMY */
-			local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:l_col color:l_col
+			local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:wirecolor color:wirecolor
 
 			append new_dummies d
 
 			/* SET DUMMY SCALE */
 			d.scale = size
+			
 
 			d.scale.z = 10
 
@@ -278,6 +280,14 @@ struct TrimOperations
             result --return
         ),
 
+	/** Is dummy selected
+	 */
+	function _isDummySelected obj = 
+	(
+		--format "\n"; print "TrimOperations._isDummySelected()"
+		selection.count == 1  and core.isVolumeDummy obj
+	),
+		
     function generateSingleVolumeInCurrentLayer =
         (
             format "\ngenerateSingleVolumeInCurrentLayer()"
@@ -324,10 +334,12 @@ struct TrimOperations
 						format "core.isVolumeDummy obj: %\n" (core.isVolumeDummy obj)
 						
 						/* GET NAME  BY SELECTED DUMMY OR BAY TOP LAYER */ 
-						vol_name = if selection.count == 1  and core.isVolumeDummy obj  then trimGetUniqueDummy obj.name else target_layer.name
+						vol_name  = if this._isDummySelected obj  then trimGetNextDummy obj.name
+						wirecolor = if this._isDummySelected obj  then obj.wirecolor
 						
 						
-                        if not (createVolumeFromNodes a_nodes vol_name is_layer:true target_layer:target_layer) then
+						
+                        if not (createVolumeFromNodes a_nodes vol_name is_layer:true target_layer:target_layer wirecolor:wirecolor ) then
                             messageBox ("A No valid objects found to calculate volume.\n\nIn layer:\n\n"+target_layer.name) title:"Generate Volumes"
                         else
                             FORMAT "GENERATED VOLUME FOR LAYER: %"  target_layer.name
@@ -467,7 +479,7 @@ struct TrimOperations
 
     /** Ge size and posof dummy
          */
-        function _geSizeAndPosOfDummy =
+        function _geSizeAndPosOfDummy n_arr =
         (
 
 
@@ -508,7 +520,12 @@ struct TrimOperations
                     default:  n_arr
                 )
 
-                bboxDataTools.getAverageBBoxData get_average_size_of -- return
+                bbox_data = bboxDataTools.getAverageBBoxData get_average_size_of -- return
+				
+				/* AVERAGE SIZE OF XY */ 
+				bbox_data[1].x = bbox_data[1].y =  (bbox_data[1].x + bbox_data[1].y) / 2
+				
+				bbox_data --return
             )
 
 
