@@ -79,8 +79,8 @@ struct DwgMassImporter_Main (
 )
 /* Execute
 
-	(DwgMassImporter_Main()).run()
+	
+	format "DEV OPENING OF DwgMassImporter_Main(): %\n" ((DwgMassImporter_Main()).run())
 
 */ 
 
-(DwgMassImporter_Main()).run()

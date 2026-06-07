@@ -90,5 +90,8 @@ function openCanvasTrimSplinesTool =
 	callbacks.removeScripts id:#trimSplineVolumeClone
 	callbacks.addScript #postNodesCloned "trimHandleCloned()" id:#trimSplineVolumeClone
 )
+/*
 
-openCanvasTrimSplinesTool()
+	format "DEV OPENING OF openCanvasTrimSplinesTool(): %\n" (openCanvasTrimSplinesTool())
+
+*/ 
