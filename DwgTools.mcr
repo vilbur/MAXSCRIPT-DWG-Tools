@@ -71,6 +71,7 @@ icon:"tooltip:Open Transform Lock Class Manager"
 (
 	on execute do
 	(
+		
 		splineToObjConvertorExecute()
 	)
 )
