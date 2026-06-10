@@ -2,6 +2,12 @@
 
 AEC window and door replacement tool.
 
+## Overview
+
+- Replaces selected source objects with AEC window or door objects.
+- Can use selected or existing AEC objects as templates.
+- Designed for DWG-derived architectural workflows where placeholder geometry must become proper window or door objects.
+
 ## Entry script
 
 - [`WinDoorManager.ms`](WinDoorManager.ms)
@@ -9,12 +15,6 @@ AEC window and door replacement tool.
 ## Macro
 
 - `_DwgTools_WinDoorManager`
-
-## Overview
-
-- Replaces selected source objects with AEC window or door objects.
-- Can use selected or existing AEC objects as templates.
-- Designed for DWG-derived architectural workflows where placeholder geometry must become proper window or door objects.
 
 ## Repository navigation
 
