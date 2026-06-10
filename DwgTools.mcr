@@ -1,3 +1,19 @@
+macroscript _DwgTools_open_tools
+category:"_DwgTools"
+buttonText:"MassImporter"
+tooltip:"DWG Mass Import"
+(
+	
+	on execute do
+	(
+		LayerManager.editLayerByName "0"
+		(DwgMassImporter_Main()).run()
+	)
+)
+
+
+
+
 macroscript _DwgTools_MassImporter
 category:"_DwgTools"
 buttonText:"MassImporter"
@@ -25,10 +41,10 @@ tooltip:"Volume Trim"
 	)
 )
 
-macroscript _DwgTools_Main
+macroscript _DwgTools_DwgLayerManager
 category:"_DwgTools"
 buttonText:"Dwg Layers"
-tooltip:"Dwg Layers"
+tooltip:"Open DWG Layer Managerer"
 (
 	on execute do
 	(
@@ -73,30 +89,5 @@ icon:"tooltip:Open Transform Lock Class Manager"
 	(
 		
 		splineToObjConvertorExecute()
-	)
-)
-
-
-
-macroscript _DwgTools_IMPORT_TOOLS
-category:"_DwgTools"
-buttonText:"IMPORT TOOLS"
-tooltip:"IMPORT TOOLS"
-icon:"tooltip:IMPORT DWG Tools"
-(
-	
-	on execute do
-	(
-		try(
-			
-		format "\nDEV-IMPORT.ms\n"
-		filein @"C:\Users\vilbur\AppData\Local\Autodesk\3dsMax\2026 - 64bit\ENU\scripts\MAXSCRIPT-DWG-Tools\DEV-IMPORT.ms"
-			
-			)catch(
-			
-		format "\nWTF FAIL TO IMPORT DEV-IMPORT.ms\n"
-			
-		)
-		
 	)
 )

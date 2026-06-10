@@ -24,8 +24,7 @@ filein( getFilenamePath(getSourceFileName()) + "/Lib/LayerKeywordManager/layerTr
 
 filein( getFilenamePath(getSourceFileName()) + "/Lib/Callbacks/layerToggleCallback.ms" )	--"./Lib/Callbacks/layerToggleCallback.ms"
 
-filein( getFilenamePath(getSourceFileName()) + "/loadContentAndCreateDialog.ms" )	--"./loadContentAndCreateDialog.ms"
-
+filein( getFilenamePath(getSourceFileName()) + "/DwgLayerManagerDialogCreate.ms" )	--"./DwgLayerManagerDialogCreate.ms"
 
 filein( getFilenamePath(getSourceFileName()) + "/dwgToolsDialog.ms" )	--"./dwgToolsDialog.ms"
 

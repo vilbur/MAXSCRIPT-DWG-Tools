@@ -1,9 +1,5 @@
 --clearListener(); print("Cleared in:\n"+getSourceFileName())
 
-/* UI FRAMEWORK */
-filein( getFilenamePath(getSourceFileName()) + "/../MAXSCRIPT-UI-framework/Lib/Dialog/Dialog.ms" )	--"./../MAXSCRIPT-UI-framework/Lib/Dialog/Dialog.ms"
-
-
 
 /** Addd keywords to
  */
@@ -12,7 +8,7 @@ function adddKeywordsTo _Controls keyword keywords width:256 level:0 id: =
 	--format "\n"; print ".adddKeywordsTo()"
 	
 	keyword	= ( dotNetObject "System.Text.RegularExpressions.Regex" "[\\s\\-_]+" ).Replace keyword "_"
-	
+	Dialog.ms
 	if id == unsupplied then 
 		id = "CBTN"
 	
