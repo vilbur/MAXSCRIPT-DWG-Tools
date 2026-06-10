@@ -1,23 +1,21 @@
-# DWG Mass Importer  
+# DwgMassImporter
 
-## Mass import of dwg files to 3Ds Max  
+Mass DWG importer for folder-based DWG import into 3ds Max.
 
+## Entry script
 
-![DwgMassImporter](../../Doc/DwgMassImporter.jpg "DwgMassImporter")  
+- [`DwgMassImporter.ms`](DwgMassImporter.ms)
 
+## Macro
 
-file_A: imported_dwg_A.dwg  
-file_B: imported_dwg_B.dwg  
+- `_DwgTools_DwgMassImporter`
 
-both files contains: child_shared  
+## Overview
 
-each contains unique layer: child_uniqie_A or child_uniqie_B  
+- Imports multiple DWG files from a selected folder.
+- Supports cleanup options such as search/replace naming cleanup and mesh/spline import processing.
+- Can group imported objects per DWG file to make imported views easier to manage.
 
-layers tree:  
+## Repository navigation
 
-	imported_dwg_A > imported_dwg_A - child_shared  
-	imported_dwg_B > imported_dwg_B - child_shared  
-	imported_dwg_A > child_uniqie_A  
-	imported_dwg_B > child_uniqie_B  
-
-for e.g.: NEVER MIX PERFIXES of "A" and layers of "B"  
+- [Back to main README](../../README.md)
