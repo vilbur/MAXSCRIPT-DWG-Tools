@@ -214,12 +214,55 @@ struct TrimOperations
             if (not quiet) then messageBox ("Canvas Trim Complete.\nDeleted: " + d_count as string) title:"Trim Canvas"
         ),
 
+    /* Get top visible parent layer below layer 0.
+       Returns undefined for invalid layer input. */
     function getTopLayer layer_item =
+    (
+        if (layer_item != undefined) then
         (
-            while ((layer_item.getParent()) != undefined and (layer_item.getParent()).name != "0") do layer_item = layer_item.getParent(); layer_item
+            while ((layer_item.getParent()) != undefined and (layer_item.getParent()).name != "0") do
+            (
+                layer_item = layer_item.getParent()
+            )
+        )
 
-            layer_item --return
-       ),
+        layer_item
+        -- return
+    ),
+
+    /* Test if layer and parent layer chain are visible.
+       Prevents creating volume helpers in hidden layers. */
+    function isLayerChainVisible layer_item =
+    (
+        visible_result = false
+
+        if (layer_item != undefined) then
+        (
+            visible_result = true
+            check_layer = layer_item
+
+            while (check_layer != undefined and visible_result) do
+            (
+                if (check_layer.on == false) then visible_result = false
+                check_layer = check_layer.getParent()
+            )
+        )
+
+        visible_result
+        -- return
+    ),
+
+    /* Show hidden layer warning.
+       Uses different text for current layer and selected-object layer. */
+    function showHiddenLayerMessage layer_item from_current_layer:false =
+    (
+        layer_name = if (layer_item != undefined) then layer_item.name else "undefined"
+        prefix_text = if from_current_layer then "Current layer is hidden." else "Target layer is hidden."
+
+        messageBox (prefix_text + "\n\nVolume helper was not created.\n\nLayer:\n" + layer_name) title:"Generate Volume"
+        false
+        -- return
+    ),
 
     /* Force volume data to 2D XY.
        Z size is zero because trim tests treat Z as infinite. */
@@ -236,7 +279,98 @@ struct TrimOperations
         -- return
     ),
 
-    function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined wirecolor:undefined =
+    /* Saturate RGB color to maximum display strength.
+       Keeps hue from source layer color when possible. */
+    function getSaturatedColor source_color =
+    (
+        local source_r = amax 0.0 (amin 255.0 source_color.r)
+        local source_g = amax 0.0 (amin 255.0 source_color.g)
+        local source_b = amax 0.0 (amin 255.0 source_color.b)
+        local max_value = amax source_r source_g source_b
+        local min_value = amin source_r source_g source_b
+        local result_color = color 255 255 255
+
+        if ((max_value - min_value) >= 0.001) then
+        (
+            local scale_value = 255.0 / (max_value - min_value)
+            result_color = color ((source_r - min_value) * scale_value) ((source_g - min_value) * scale_value) ((source_b - min_value) * scale_value)
+        )
+
+        result_color
+        -- return
+    ),
+
+    /* Get saturated color from layer wire color.
+       Falls back safely when layer color is not readable. */
+    function getLayerSaturatedColor layer_val =
+    (
+        local layer_color = color 255 255 255
+
+        try
+        (
+            if (layer_val != undefined) then layer_color = layer_val.wireColor
+        )
+        catch
+        (
+            layer_color = color 255 255 255
+        )
+
+        getSaturatedColor layer_color
+        -- return
+    ),
+
+    /* Get union bbox from nodes in XY only.
+       Margin percent is applied to every XY side. */
+    function getNodesBBoxData2D n_arr margin_percent:0.0 =
+    (
+        local min_p = [1e9, 1e9, 0.0]
+        local max_p = [-1e9, -1e9, 0.0]
+        local found_node = false
+
+        for node_item in n_arr where (isValidNode node_item and node_item.name != "TRIM_CANVAS" and not (core.isVolumeDummy node_item) and not isGroupHead node_item) do
+        (
+            try
+            (
+                local node_box = nodeGetBoundingBox node_item (matrix3 1)
+
+                min_p.x = amin min_p.x node_box[1].x
+                min_p.y = amin min_p.y node_box[1].y
+                max_p.x = amax max_p.x node_box[2].x
+                max_p.y = amax max_p.y node_box[2].y
+
+                found_node = true
+            )
+            catch
+            (
+            )
+        )
+
+        if (found_node) then
+        (
+            local base_size_x = max_p.x - min_p.x
+            local base_size_y = max_p.y - min_p.y
+            local safe_margin_percent = abs margin_percent
+            local margin_x = base_size_x * safe_margin_percent
+            local margin_y = base_size_y * safe_margin_percent
+
+            min_p.x -= margin_x
+            min_p.y -= margin_y
+            max_p.x += margin_x
+            max_p.y += margin_y
+
+            local bbox_size = [max_p.x - min_p.x, max_p.y - min_p.y, 0.0]
+            local bbox_center = [(min_p.x + max_p.x) / 2.0, (min_p.y + max_p.y) / 2.0, 0.0]
+
+            makeSafe2DVolumeData bbox_size bbox_center
+        )
+        else
+        (
+            undefined
+        )
+        -- return
+    ),
+
+    function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined wirecolor:undefined use_bounds:false margin_percent:0.0 from_current_layer:false =
     (
         result = false
 
@@ -244,38 +378,66 @@ struct TrimOperations
 
         if (target_layer != undefined) then
         (
+            if (not (isLayerChainVisible target_layer)) then
+            (
+                showHiddenLayerMessage target_layer from_current_layer:from_current_layer
+                return false
+            )
+
+            local top_layer = getTopLayer target_layer
             local exist_dummy = getNodeByName target_layer.name
             if (isValidNode exist_dummy and core.isVolumeDummy exist_dummy) then delete exist_dummy
 
-            average_bbox_data = this._geSizeAndPosOfDummy(n_arr)
-            average_bbox_data = makeSafe2DVolumeData (average_bbox_data[1]) (average_bbox_data[2])
+            if (vol_name != undefined) then
+            (
+                local exist_named_dummy = getNodeByName vol_name
+                if (isValidNode exist_named_dummy and core.isVolumeDummy exist_named_dummy) then delete exist_named_dummy
+            )
 
-            size = average_bbox_data[1]
-            cent = average_bbox_data[2]
+            local volume_bbox_data = undefined
+            if (use_bounds) then
+            (
+                volume_bbox_data = getNodesBBoxData2D n_arr margin_percent:margin_percent
+            )
+            else
+            (
+                volume_bbox_data = this._geSizeAndPosOfDummy(n_arr)
+                if (volume_bbox_data != undefined) then volume_bbox_data = makeSafe2DVolumeData (volume_bbox_data[1]) (volume_bbox_data[2])
+            )
 
-            obj = if (selection.count > 0) then selection[1] else undefined
-            top_layer = getTopLayer target_layer
+            if (volume_bbox_data != undefined) then
+            (
+                size = volume_bbox_data[1]
+                cent = volume_bbox_data[2]
 
-            if wirecolor == undefined then
-                wirecolor = top_layer.wireColor
+                if (wirecolor == undefined) then
+                (
+                    wirecolor = getLayerSaturatedColor top_layer
+                )
+                else
+                (
+                    wirecolor = getSaturatedColor wirecolor
+                )
 
-            if vol_name == undefined then
-                vol_name = top_layer.name
+                if (vol_name == undefined) then vol_name = target_layer.name
 
-            /* CREATE DUMMY */
-            local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:wirecolor color:wirecolor
-            d.pos.z = 0.0
+                /* CREATE DUMMY */
+                local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:wirecolor color:wirecolor
+                d.pos.z = 0.0
 
-            append new_dummies d
+                append new_dummies d
 
-            /* SET DUMMY SCALE */
-            d.scale = size
-            d.scale.z = 0.0
-            d.pos.z = 0.0
+                /* SET DUMMY SCALE */
+                d.scale = size
+                d.scale.z = 0.0
+                d.pos.z = 0.0
+                d.wirecolor = wirecolor
+                d.color = wirecolor
 
-            top_layer.addNode d
+                target_layer.addNode d
 
-            result = true
+                result = true
+            )
         )
 
         result --return
@@ -293,42 +455,43 @@ struct TrimOperations
         (
             new_dummies = #()
 
-
             undo "Generate Current Layer Volume" on
             (
                 obj = if (selection.count > 0) then selection[1] else undefined
-                --format "TARGET_LAYER: %\n" target_layer
-            target_layer = this._getTargetLayer()
+                source_nodes = for node_item in selection where (isValidNode node_item and node_item.name != "TRIM_CANVAS" and not (core.isVolumeDummy node_item) and not isGroupHead node_item) collect node_item
 
-
-                if (target_layer != undefined) then
+                if (source_nodes.count > 0) then
                 (
-                    --local lay_name = target_layer.name
+                    target_layer = source_nodes[1].layer
 
-                    /* AUTO FIND LAYER TO GENERATE IF VURRENT LAYER IS DEFAULT ( uer friedlai front end function ) */
-                    if (target_layer.name == "0") then
+                    if (not (isLayerChainVisible target_layer)) then
                     (
-                        /* GET ENABLED TOP LAYERS */
-                        visible_top_layers = for i = 0 to LayerManager.count - 1 where (layer = LayerManager.getLayer i ).getParent() == undefined and layer.on collect layer
-                        --format "visible_top_layers.count: %\n" visible_top_layers.count
-
-
-                        if visible_top_layers.count > 0 then
-                        (
-                            /* SERACH FOR LAYER WITHOUT DUMMY */
-                            layers_without_dummy = for visible_top_layer in visible_top_layers where (this.getVolumesInLayerTree visible_top_layer).count == 0 collect visible_top_layer
-
-                            target_layer = if layers_without_dummy.count > 0 then layers_without_dummy[1] else visible_top_layers[1]
-
-                            target_layer.current  = true
-                        )
-
+                        showHiddenLayerMessage target_layer from_current_layer:false
                     )
+                    else if (not (createVolumeFromNodes source_nodes "TRIM_SELECTION" is_layer:false target_layer:target_layer use_bounds:true margin_percent:0.10)) then
+                    (
+                        messageBox ("No valid selected objects found to calculate volume.\n\nIn layer:\n\n" + target_layer.name) title:"Generate Volumes"
+                    )
+                    else
+                    (
+                        format "Generated selection volume in layer: %\n" target_layer.name
+                    )
+                )
+                else
+                (
+                    target_layer = this._getTargetLayer()
 
-                    local ex_vols = this.getVolumesInLayerTree target_layer
+                    if (target_layer != undefined) then
+                    (
+                        if (not (isLayerChainVisible target_layer)) then
+                        (
+                            showHiddenLayerMessage target_layer from_current_layer:true
+                        )
+                        else
+                        (
+                            local a_nodes = collectAllNodesInLayerTree target_layer
 
-                        local a_nodes = collectAllNodesInLayerTree target_layer
-/* GET NAME BY SELECTED DUMMY OR BY TOP LAYER */ 
+                            /* GET NAME BY SELECTED DUMMY OR BY TOP LAYER */
                             vol_name = undefined
                             wirecolor = undefined
                             if (this._isDummySelected obj) then
@@ -336,21 +499,17 @@ struct TrimOperations
                                 vol_name = trimGetNextDummy obj.name
                                 wirecolor = obj.wirecolor
                             )
-                            
-                            
-                            
-                        if not (createVolumeFromNodes a_nodes vol_name is_layer:true target_layer:target_layer wirecolor:wirecolor ) then
-                            messageBox ("A No valid objects found to calculate volume.\n\nIn layer:\n\n"+target_layer.name) title:"Generate Volumes"
-                        else
-                            FORMAT "GENERATED VOLUME FOR LAYER: %"  target_layer.name
-                            --messageBox ("Generated volume for layer: " + target_layer.name) title:"Generate Volumes"
+
+                            if (not (createVolumeFromNodes a_nodes vol_name is_layer:true target_layer:target_layer wirecolor:wirecolor from_current_layer:true)) then
+                                messageBox ("No valid objects found to calculate volume.\n\nIn layer:\n\n" + target_layer.name) title:"Generate Volumes"
+                            else
+                                format "GENERATED VOLUME FOR CURRENT LAYER: %\n" target_layer.name
+                        )
+                    )
                 )
 
                 if new_dummies.count > 0 then select     new_dummies
-
             )
-
-
         ),
 
     --    function getTopLayer lay_val =
@@ -373,8 +532,12 @@ struct TrimOperations
                 local s_nodes = for n in selection where (isValidNode n and n.name != "TRIM_CANVAS" and not (core.isVolumeDummy n) and not isGroupHead n) collect n
                 if (s_nodes.count > 0) then
                 (
-                    local t_lay = this.getTopLayer s_nodes[1].layer
-                    if (createVolumeFromNodes s_nodes "TRIM_SELECTION" is_layer:true target_layer:t_lay) then
+                    local t_lay = s_nodes[1].layer
+                    if (not (isLayerChainVisible t_lay)) then
+                    (
+                        showHiddenLayerMessage t_lay from_current_layer:false
+                    )
+                    else if (createVolumeFromNodes s_nodes "TRIM_SELECTION" is_layer:false target_layer:t_lay use_bounds:true margin_percent:0.10) then
                     (
                         local d = getNodeByName "TRIM_SELECTION"
                         if (isValidNode d) then select d
@@ -382,8 +545,7 @@ struct TrimOperations
                     )
                     else
                     (
-                        messageBox ("B No valid selected objects found to calculate volume.\n\nIn layer:\n\n"+t_lay.name) title:"Generate Volumes"
-
+                        messageBox ("No valid selected objects found to calculate volume.\n\nIn layer:\n\n" + t_lay.name) title:"Generate Volumes"
                     )
                 )
                 else
