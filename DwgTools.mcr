@@ -17,7 +17,7 @@ tooltip:"Open DWG Tools"
 
 macroscript _DwgTools_MassImporter
 category:"_DwgTools"
-buttonText:"MassImporter"
+buttonText:"MassImporter"()
 tooltip:"DWG Mass Import"
 (
 	
@@ -38,6 +38,7 @@ tooltip:"Volume Trim"
 	on execute do
 	(
 		--clearListener(); print("Cleared in: "+getSourceFileName())
+		format "openCanvasTrimSplinesTool: %\n" openCanvasTrimSplinesTool
 		openCanvasTrimSplinesTool()
 	)
 )

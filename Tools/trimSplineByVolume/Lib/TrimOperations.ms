@@ -173,18 +173,16 @@ struct TrimOperations
                         a_knots += d[6]
                         if (d[2].x < min_p.x) then min_p.x = d[2].x
                         if (d[2].y < min_p.y) then min_p.y = d[2].y
-                        if (d[2].z < min_p.z) then min_p.z = d[2].z
                         if (d[3].x > max_p.x) then max_p.x = d[3].x
                         if (d[3].y > max_p.y) then max_p.y = d[3].y
-                        if (d[3].z > max_p.z) then max_p.z = d[3].z
                         if (a_knots >= t_target) then exit
                     )
-                    local m_ext = amax (abs min_p.x) (abs min_p.y) (abs min_p.z) (abs max_p.x) (abs max_p.y) (abs max_p.z)
+                    local m_ext = amax (abs min_p.x) (abs min_p.y) (abs max_p.x) (abs max_p.y)
                     h_size = m_ext * 2.1
                     if (h_size <= 0) then h_size = 500.0
                 )
                 try (
-                    local d = Dummy name:"TRIM_CANVAS" pos:[0,0,0] boxsize:[h_size, h_size, 10.0] wirecolor:(color 255 128 0)
+                    local d = Dummy name:"TRIM_CANVAS" pos:[0,0,0] boxsize:[h_size, h_size, 0.0] wirecolor:(color 255 128 0)
                     if (d_layer != undefined) then d_layer.addNode d
                     select d; actionMan.executeAction 0 "311"
                 ) catch ()
@@ -200,8 +198,7 @@ struct TrimOperations
                 return undefined
             )
             core.openGroupsOfUnhiddenObjects ignore_frozen:ignore_frz
-            local c_bb = nodeGetBoundingBox c_node (matrix3 1)
-            local c_min = c_bb[1], c_max = c_bb[2]
+            local c_data = core.getVolumeBoundsData c_node
             local d_objs = for n in objects where (n != c_node and not isGroupHead n and core.isNodeProcessable n ignore_frozen:ignore_frz) collect n
             local d_count = 0
             undo "Trim Canvas" on
@@ -209,7 +206,7 @@ struct TrimOperations
                 for n in d_objs do
                 (
                     local o_bb = nodeGetBoundingBox n (matrix3 1)
-                    local is_out = (o_bb[2].x < c_min.x or o_bb[1].x > c_max.x or o_bb[2].y < c_min.y or o_bb[1].y > c_max.y or o_bb[2].z < c_min.z or o_bb[1].z > c_max.z)
+                    local is_out = core.isWorldBBoxOutsideVolume2D o_bb c_data tol_val:0.001
                     if (is_out) then ( delete n; d_count += 1 )
                 )
             )
@@ -224,61 +221,65 @@ struct TrimOperations
             layer_item --return
        ),
 
+    /* Force volume data to 2D XY.
+       Z size is zero because trim tests treat Z as infinite. */
+    function makeSafe2DVolumeData size_val center_val =
+    (
+        local safe_size = [abs size_val.x, abs size_val.y, 0.0]
+        local safe_center = [center_val.x, center_val.y, 0.0]
+        local fallback_size = amax safe_size.x safe_size.y 1.0
+
+        if (safe_size.x < 0.001) then safe_size.x = fallback_size
+        if (safe_size.y < 0.001) then safe_size.y = fallback_size
+
+        #(safe_size, safe_center)
+        -- return
+    ),
+
     function createVolumeFromNodes n_arr vol_name is_layer:false target_layer:undefined wirecolor:undefined =
     (
-		result = false
+        result = false
 
-		target_layer = this._getTargetLayer()
-		
-		format "target_layer.name: %\n" target_layer.name
-		(
-			local exist_dummy = getNodeByName target_layer.name
+        if (target_layer == undefined) then target_layer = this._getTargetLayer()
 
-			if (isValidNode exist_dummy and core.isVolumeDummy exist_dummy ) then delete exist_dummy
+        if (target_layer != undefined) then
+        (
+            local exist_dummy = getNodeByName target_layer.name
+            if (isValidNode exist_dummy and core.isVolumeDummy exist_dummy) then delete exist_dummy
 
+            average_bbox_data = this._geSizeAndPosOfDummy(n_arr)
+            average_bbox_data = makeSafe2DVolumeData (average_bbox_data[1]) (average_bbox_data[2])
 
-			average_bbox_data = this._geSizeAndPosOfDummy(n_arr)
+            size = average_bbox_data[1]
+            cent = average_bbox_data[2]
 
-			size = average_bbox_data[1]
-			cent = average_bbox_data[2]
+            obj = if (selection.count > 0) then selection[1] else undefined
+            top_layer = getTopLayer target_layer
 
+            if wirecolor == undefined then
+                wirecolor = top_layer.wireColor
 
+            if vol_name == undefined then
+                vol_name = top_layer.name
 
-			--median_bbox_data = bboxDataTools.getMedianBBoxData get_average_size_of
-			--size = median_bbox_data[1]
-			--cent = median_bbox_data[2]
+            /* CREATE DUMMY */
+            local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:wirecolor color:wirecolor
+            d.pos.z = 0.0
 
-			obj = selection[1]
-			
-			top_layer = getTopLayer target_layer
-			
+            append new_dummies d
 
-			if wirecolor == undefined then
-				wirecolor = top_layer.wireColor
-		
-			if vol_name == undefined then
-				vol_name = top_layer.name
-		
-			/* CREATE DUMMY */
-			local d = VolumeHelper name:vol_name pos:cent size:1 wirecolor:wirecolor color:wirecolor
+            /* SET DUMMY SCALE */
+            d.scale = size
+            d.scale.z = 0.0
+            d.pos.z = 0.0
 
-			append new_dummies d
+            top_layer.addNode d
 
-			/* SET DUMMY SCALE */
-			d.scale = size
-			
+            result = true
+        )
 
-			d.scale.z = 10
-
-
-		   top_layer.addNode d
-
-			result = true
-
-		)
-
-            result --return
-        ),
+        result --return
+    ),
 
 	/** Is dummy selected
 	 */
@@ -290,14 +291,12 @@ struct TrimOperations
 		
     function generateSingleVolumeInCurrentLayer =
         (
-            format "\ngenerateSingleVolumeInCurrentLayer()"
             new_dummies = #()
 
 
             undo "Generate Current Layer Volume" on
             (
-
-			obj	= selection[1]
+                obj = if (selection.count > 0) then selection[1] else undefined
                 --format "TARGET_LAYER: %\n" target_layer
             target_layer = this._getTargetLayer()
 
@@ -329,16 +328,17 @@ struct TrimOperations
                     local ex_vols = this.getVolumesInLayerTree target_layer
 
                         local a_nodes = collectAllNodesInLayerTree target_layer
-
-						format "selection.count == 1: %\n" (selection.count == 1)
-						format "core.isVolumeDummy obj: %\n" (core.isVolumeDummy obj)
-						
-						/* GET NAME  BY SELECTED DUMMY OR BAY TOP LAYER */ 
-						vol_name  = if this._isDummySelected obj  then trimGetNextDummy obj.name
-						wirecolor = if this._isDummySelected obj  then obj.wirecolor
-						
-						
-						
+/* GET NAME BY SELECTED DUMMY OR BY TOP LAYER */ 
+                            vol_name = undefined
+                            wirecolor = undefined
+                            if (this._isDummySelected obj) then
+                            (
+                                vol_name = trimGetNextDummy obj.name
+                                wirecolor = obj.wirecolor
+                            )
+                            
+                            
+                            
                         if not (createVolumeFromNodes a_nodes vol_name is_layer:true target_layer:target_layer wirecolor:wirecolor ) then
                             messageBox ("A No valid objects found to calculate volume.\n\nIn layer:\n\n"+target_layer.name) title:"Generate Volumes"
                         else
@@ -481,8 +481,6 @@ struct TrimOperations
          */
         function _geSizeAndPosOfDummy n_arr =
         (
-
-
             --format "\n"; print "TrimOperations._geSizeAndPosofDummy()"
             fn getVolumeHelpers objs = for n in objs where (isValidNode n and not (core.isVolumeDummy n) and not isGroupHead n) collect n
 
@@ -494,42 +492,44 @@ struct TrimOperations
                 bbox_size = node_box[2] - node_box[1]
 
                 [abs bbox_size.x, abs bbox_size.y, abs bbox_size.z]
+                -- return
             )
 
+            if (selection.count == 1 and isValidNode selection[1]) then
+            (
+                single_size = getNodeBBoxSize selection[1]
+                single_center = selection[1].pos + [5, 5, 0]
+                single_center.z = 0.0
+                single_size.z = 0.0
 
-
-
-            if selection.count == 1 then
-                #( getNodeBBoxSize selection[1], selection[1].pos + [ 5,5,0  ] )  --return
+                #(single_size, single_center)
+            )
             else
             (
                 bboxDataTools = bboxDataTools_v()
-
                 volume_helpers_all = getVolumeHelpers helpers
-                format "volume_helpers_all.count: %\n" volume_helpers_all.count
 
                 get_average_size_of = case of
                 (
                     /* GET SIZE BY SELECTION */
-                    (selection.count > 0 ):     selection as Array
+                    (selection.count > 0): selection as Array
 
                     /* GET SIZE BY EXISITNG HELPERS */
-                    (volume_helpers_all.count > 0 ):    volume_helpers_all
+                    (volume_helpers_all.count > 0): volume_helpers_all
 
                     /* ALL NODES IN LAYERS */
-                    default:  n_arr
+                    default: n_arr
                 )
 
-                bbox_data = bboxDataTools.getAverageBBoxData get_average_size_of -- return
-				
-				/* AVERAGE SIZE OF XY */ 
-				bbox_data[1].x = bbox_data[1].y =  (bbox_data[1].x + bbox_data[1].y) / 2
-				
-				bbox_data --return
+                bbox_data = bboxDataTools.getAverageBBoxData get_average_size_of
+
+                /* AVERAGE SIZE OF XY */
+                bbox_data[1].x = bbox_data[1].y = (bbox_data[1].x + bbox_data[1].y) / 2
+                bbox_data[1].z = 0.0
+                bbox_data[2].z = 0.0
+
+                bbox_data --return
             )
-
-
-
         ),
 
     /** Get target layer
@@ -538,8 +538,15 @@ struct TrimOperations
         (
             --format "\n"; print "TrimOperations._getTargetLayer()"
 
-            if (selection.count > 0 and isValidNode selection[1]) then selection[1].layer else target_layer = LayerManager.current
-
+            if (selection.count > 0 and isValidNode selection[1]) then
+            (
+                selection[1].layer
+            )
+            else
+            (
+                LayerManager.current
+            )
+            -- return
         ),
 
     on create do

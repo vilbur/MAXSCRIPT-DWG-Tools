@@ -43,25 +43,85 @@ struct TrimCore
         opened_count
     ),
 
+    /* Get 2D world bounds from volume helper.
+       Z is intentionally ignored by all trim tests. */
     function getVolumeBoundsData vol_node =
     (
-        local vol_tm = vol_node.objectTransform
-        #(nodeGetBoundingBox vol_node vol_tm, inverse vol_tm)
+        if (isValidNode vol_node) then
+        (
+            local vol_box = nodeGetBoundingBox vol_node (matrix3 1)
+            local min_p = vol_box[1]
+            local max_p = vol_box[2]
+
+            if (min_p.x > max_p.x) then
+            (
+                local swap_x = min_p.x
+                min_p.x = max_p.x
+                max_p.x = swap_x
+            )
+
+            if (min_p.y > max_p.y) then
+            (
+                local swap_y = min_p.y
+                min_p.y = max_p.y
+                max_p.y = swap_y
+            )
+
+            #(min_p, max_p)
+        )
+        else
+        (
+            undefined
+        )
+        -- return
     ),
 
+    /* Test point against volume in XY only.
+       Z is infinite, so point.z is never tested. */
     function isWorldPointInsideVolume world_point bounds_data tol_val:0.001 =
     (
-        local min_p = bounds_data[1][1], max_p = bounds_data[1][2], vol_inv = bounds_data[2]
-        local p = world_point * vol_inv
-        (p.x >= (min_p.x - tol_val) and p.x <= (max_p.x + tol_val) and \
-         p.y >= (min_p.y - tol_val) and p.y <= (max_p.y + tol_val) and \
-         p.z >= (min_p.z - tol_val) and p.z <= (max_p.z + tol_val))
+        if (bounds_data != undefined and bounds_data.count >= 2) then
+        (
+            local min_p = bounds_data[1]
+            local max_p = bounds_data[2]
+
+            (world_point.x >= (min_p.x - tol_val) and world_point.x <= (max_p.x + tol_val) and \
+             world_point.y >= (min_p.y - tol_val) and world_point.y <= (max_p.y + tol_val))
+        )
+        else
+        (
+            false
+        )
+        -- return
     ),
 
+    /* Test bbox against volume in XY only.
+       Used by canvas/object deletion paths. */
+    function isWorldBBoxOutsideVolume2D world_box bounds_data tol_val:0.001 =
+    (
+        if (bounds_data != undefined and bounds_data.count >= 2 and world_box != undefined and world_box.count >= 2) then
+        (
+            local min_p = bounds_data[1]
+            local max_p = bounds_data[2]
+            local box_min = world_box[1]
+            local box_max = world_box[2]
+
+            (box_max.x < (min_p.x - tol_val) or box_min.x > (max_p.x + tol_val) or \
+             box_max.y < (min_p.y - tol_val) or box_min.y > (max_p.y + tol_val))
+        )
+        else
+        (
+            true
+        )
+        -- return
+    ),
+
+    /* Delete only truly empty spline containers.
+       Splines with knots are preserved here to avoid invalid curve updates. */
     function deleteEmptySplines shape_node =
     (
         local del_count = 0
-        for sp_idx = (numSplines shape_node) to 1 by -1 where (numSegments shape_node sp_idx) < 1 do
+        for sp_idx = (numSplines shape_node) to 1 by -1 where (numKnots shape_node sp_idx) < 1 do
         (
             deleteSpline shape_node sp_idx
             del_count += 1
@@ -95,71 +155,67 @@ struct TrimCore
         )
     ),
 
+    /* Trim one shape by 2D volume bounds.
+       Whole-inside splines are never touched. */
     function trimShapeByVolume shape_node b_data tol_val:0.001 delete_empty:true =
     (
-        local del_k = 0, del_sp = 0
-        if (isValidNode shape_node and isSplineShapeNode shape_node) then
+        local del_k = 0
+        local del_sp = 0
+
+        if (isValidNode shape_node and isSplineShapeNode shape_node and b_data != undefined) then
         (
             for sp_idx = (numSplines shape_node) to 1 by -1 do
             (
                 local k_count = numKnots shape_node sp_idx
-                local is_closed = isClosed shape_node sp_idx
-                local out_states = for k = 1 to k_count collect (not (isWorldPointInsideVolume (getKnotPoint shape_node sp_idx k) b_data tol_val:tol_val))
-                
-                for k_idx = k_count to 1 by -1 do
+
+                if (k_count > 0) then
                 (
-                    if (out_states[k_idx]) then
+                    local inside_states = for k = 1 to k_count collect (isWorldPointInsideVolume (getKnotPoint shape_node sp_idx k) b_data tol_val:tol_val)
+                    local inside_count = 0
+
+                    for state_item in inside_states where state_item do inside_count += 1
+
+                    if (inside_count == k_count) then
                     (
-                        local should_del = false
-                        if (k_count > 2) then
+                        /* Whole spline is inside XY volume. Do nothing. */
+                    )
+                    else if (inside_count == 0) then
+                    (
+                        deleteSpline shape_node sp_idx
+                        del_sp += 1
+                    )
+                    else
+                    (
+                        local is_closed = isClosed shape_node sp_idx
+                        local min_safe_knots = if is_closed then 3 else 2
+
+                        if (inside_count >= min_safe_knots) then
                         (
-                            local p_idx, n_idx
-                            if (is_closed) then
+                            for k_idx = k_count to 1 by -1 where (not inside_states[k_idx]) do
                             (
-                                p_idx = if (k_idx == 1) then k_count else (k_idx - 1)
-                                n_idx = if (k_idx == k_count) then 1 else (k_idx + 1)
+                                deleteKnot shape_node sp_idx k_idx
+                                del_k += 1
                             )
-                            else
-                            (
-                                p_idx = k_idx - 1
-                                n_idx = k_idx + 1
-                            )
-                            local has_p = (p_idx >= 1 and p_idx <= k_count)
-                            local has_n = (n_idx >= 1 and n_idx <= k_count)
-                            if (has_p and has_n) then
-                            (
-                                if (out_states[p_idx] == out_states[n_idx]) then should_del = true
-                            )
-                            else if (has_p and not has_n) then
-                            (
-                                if (out_states[p_idx]) then should_del = true
-                            )
-                            else if (not has_p and has_n) then
-                            (
-                                if (out_states[n_idx]) then should_del = true
-                            )
-                        )
-                        else if (k_count == 2) then
-                        (
-                            local o_idx = if (k_idx == 1) then 2 else 1
-                            if (out_states[o_idx]) then should_del = true
-                        )
-                        else if (k_count == 1) then
-                        (
-                            should_del = true
-                        )
-                        
-                        if (should_del) then
-                        (
-                            deleteKnot shape_node sp_idx k_idx
-                            del_k += 1
                         )
                     )
                 )
             )
-            del_sp = deleteEmptySplines shape_node
-            updateShape shape_node
-            if (delete_empty and (numSplines shape_node) < 1) then delete shape_node
+
+            del_sp += deleteEmptySplines shape_node
+
+            if ((numSplines shape_node) > 0) then
+            (
+                try
+                (
+                    updateShape shape_node
+                )
+                catch
+                (
+                    format "updateShape failed on %. Shape kept for safety.\n" shape_node.name
+                )
+            )
+
+            if (delete_empty and isValidNode shape_node and ((numSplines shape_node) < 1)) then delete shape_node
         )
         #(del_k, del_sp)
     ),
