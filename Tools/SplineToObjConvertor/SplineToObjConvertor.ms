@@ -1,4 +1,4 @@
-struct SplineExtractor
+struct SplineToObjConvertor_v
 (
     version = "0.15",
     z_tolerance = 0.001,
@@ -12,6 +12,7 @@ struct SplineExtractor
     deleted_nested_count = 0,
 
     /*  Update rollout progress.
+	    
         Keeps UI responsive during long spline operations. */
     function updateProgress val msg =
     (
@@ -185,7 +186,7 @@ struct SplineExtractor
             )
             catch
             (
-                format "SplineExtractor %: Attach failed: % -> %\n" this.version child_shape.name base_shape.name
+                format "SplineToObjConvertor_v %: Attach failed: % -> %\n" this.version child_shape.name base_shape.name
                 attached_ok = false
             )
         )
@@ -803,7 +804,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
             )
             catch
             (
-                format "SplineExtractor 0.15: weldSpline failed on % with threshold % mm.\n" target_shape.name threshold_mm
+                format "SplineToObjConvertor_v 0.15: weldSpline failed on % with threshold % mm.\n" target_shape.name threshold_mm
                 weld_ok = false
             )
         )
@@ -874,7 +875,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
                 )
 
                 lbl_status.text = "Status: Hidden objects: " + (hidden_count as string)
-                format "SplineExtractor 0.15: Hidden objects: %\n" hidden_count
+                format "SplineToObjConvertor_v 0.15: Hidden objects: %\n" hidden_count
             )
             else
             (
@@ -885,7 +886,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
                 )
 
                 lbl_status.text = "Status: Shown objects: " + (shown_count as string)
-                format "SplineExtractor 0.15: Shown objects: %\n" shown_count
+                format "SplineToObjConvertor_v 0.15: Shown objects: %\n" shown_count
             )
         )
         else
@@ -982,7 +983,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
 
                 if working_copy != undefined then
                 (
-                    window_manager = SplineExtractor z_tolerance:(getZThresholdValueInSystemUnits()) prog_bar:pb_progress lbl_status:lbl_status prefix:shape_prefix
+                    window_manager = SplineToObjConvertor_v z_tolerance:(getZThresholdValueInSystemUnits()) prog_bar:pb_progress lbl_status:lbl_status prefix:shape_prefix
                     current_extracted = window_manager.extractSplines working_copy
 
                     for s in current_extracted do
@@ -1009,7 +1010,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
             lbl_status.text = "Extract complete. Extracted: " + (extracted_shapes.count as string)
             pb_progress.value = 100
             try (pb_progress.color = (color 0 220 0)) catch()
-            format "SplineExtractor 0.15: Extract complete. Extracted nodes: %\n" extracted_shapes.count
+            format "SplineToObjConvertor_v 0.15: Extract complete. Extracted nodes: %\n" extracted_shapes.count
         )
         else
         (
@@ -1066,7 +1067,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
             pb_progress.value = 0
             windows.processPostedMessages()
 
-            window_manager = SplineExtractor z_tolerance:(getZThresholdValueInSystemUnits()) prog_bar:pb_progress lbl_status:lbl_status prefix:"[Merge] "
+            window_manager = SplineToObjConvertor_v z_tolerance:(getZThresholdValueInSystemUnits()) prog_bar:pb_progress lbl_status:lbl_status prefix:"[Merge] "
             final_merged_shapes = window_manager.groupAndMerge merge_input
 
             for rw in final_merged_shapes do
@@ -1081,7 +1082,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
             lbl_status.text = "Merge complete. Clusters: " + (splitted_shapes.count as string) + " | Instances: " + (window_manager.instanced_count as string) + " | Deleted nested: " + (window_manager.deleted_nested_count as string)
             pb_progress.value = 100
             try (pb_progress.color = (color 0 220 0)) catch()
-            format "SplineExtractor 0.15: Merge complete. Clusters: %, Instances: %, Deleted nested: %\n" splitted_shapes.count window_manager.instanced_count window_manager.deleted_nested_count
+            format "SplineToObjConvertor_v 0.15: Merge complete. Clusters: %, Instances: %, Deleted nested: %\n" splitted_shapes.count window_manager.instanced_count window_manager.deleted_nested_count
         )
         else
         (
@@ -1157,7 +1158,7 @@ rollout spline_obj_rollout "Spline Extractor 0.15" width:280
             )
 
             try (pb_progress.color = (color 0 220 0)) catch()
-            print "SplineExtractor 0.15: Execute Convertor complete."
+            print "SplineToObjConvertor_v 0.15: Execute Convertor complete."
         )
         else
         (

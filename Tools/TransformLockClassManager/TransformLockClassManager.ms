@@ -21,6 +21,14 @@ catch
 
 try
 (
+	callbacks.removeScripts id:#TransformLockClassManagerSceneRefresh
+)
+catch
+(
+)
+
+try
+(
 	if (TransformLockClassManager_ui != undefined) then
 	(
 		destroyDialog TransformLockClassManager_ui
@@ -32,13 +40,15 @@ catch
 
 struct TransformLockClassManager_v
 (
-	version = 0.10,
+	version = "0.17",
 
 	node_created_callback_id = #TransformLockClassManagerNodeCreated,
 	selection_changed_callback_id = #TransformLockClassManagerSelectionChanged,
+	scene_refresh_callback_id = #TransformLockClassManagerSceneRefresh,
 
-	class_keys = #(#Group, #Shape, #Geometry, #Helper, #Camera, #Light),
-	class_names = #("Group", "Shape", "Geometry", "Helper", "Camera", "Light"),
+	class_keys = #(),
+	class_names = #(),
+	ignored_class_keys = #(),
 
 	transform_names = #("Position", "Rotation", "Scale"),
 	axis_names = #("X", "Y", "Z"),
@@ -124,12 +134,96 @@ struct TransformLockClassManager_v
 		(((transform_index - 1) * 3) + axis_index) -- return
 	),
 
+	/* Sanitize class name for ini key.
+	Spaces and tabs are changed to underscores.
+	*/
+	function getIniSafeName name_text =
+	(
+		safe_text = name_text as string
+		safe_text = substituteString safe_text " " "_"
+		safe_text = substituteString safe_text "\t" "_"
+
+		safe_text -- return
+	),
+
 	/* Get ini key name.
 	Key is built from class, transform and axis names.
 	*/
 	function getIniKey class_index transform_index axis_index =
 	(
-		(class_names[class_index] + "_" + transform_names[transform_index] + "_" + axis_names[axis_index]) -- return
+		(getIniSafeName class_names[class_index] + "_" + transform_names[transform_index] + "_" + axis_names[axis_index]) -- return
+	),
+
+	/* Get ignore ini key name.
+	Ignored classes are saved per scene and class key.
+	*/
+	function getIgnoreIniKey class_index =
+	(
+		(getIniSafeName class_names[class_index] + "_Ignored") -- return
+	),
+
+	/* Test whether class key is ignored.
+	Ignored classes are skipped by all transform actions.
+	*/
+	function isClassKeyIgnored class_key =
+	(
+		((findItem ignored_class_keys class_key) > 0) -- return
+	),
+
+	/* Test whether class index is ignored.
+	Index is checked against current dynamic class list.
+	*/
+	function isClassIndexIgnored class_index =
+	(
+		ignored_state = false
+
+		if (class_index >= 1 and class_index <= class_keys.count) then
+		(
+			ignored_state = isClassKeyIgnored class_keys[class_index]
+		)
+
+		ignored_state -- return
+	),
+
+	/* Load ignored class flags from ini.
+	Only current scene classes are read.
+	*/
+	function loadIgnoredValues =
+	(
+		ignored_class_keys = #()
+		ini_path = getIniPath()
+		section_name = getSceneSectionName()
+
+		for class_index = 1 to class_keys.count do
+		(
+			key_name = getIgnoreIniKey class_index
+			value_text = getINISetting ini_path section_name key_name
+
+			if (value_text == "1" or value_text == "true" or value_text == "TRUE") then
+			(
+				append ignored_class_keys class_keys[class_index]
+			)
+		)
+
+		ignored_class_keys -- return
+	),
+
+	/* Save ignored class flags to ini.
+	All current scene classes are stored.
+	*/
+	function saveIgnoredValues =
+	(
+		ini_path = getIniPath()
+		section_name = getSceneSectionName()
+
+		for class_index = 1 to class_keys.count do
+		(
+			key_name = getIgnoreIniKey class_index
+			value_text = if (isClassIndexIgnored class_index) then "1" else "0"
+			setINISetting ini_path section_name key_name value_text
+		)
+
+		true -- return
 	),
 
 	/* Load values from per scene ini section.
@@ -190,7 +284,7 @@ struct TransformLockClassManager_v
 	),
 
 	/* Get class key from scene node.
-	Group head has priority over base object superclass.
+	Group head has priority, otherwise baseObject real class is used.
 	*/
 	function getNodeClassKey scene_node =
 	(
@@ -200,7 +294,7 @@ struct TransformLockClassManager_v
 		(
 			if (isGroupHead scene_node) then
 			(
-				class_key = #Group
+				class_key = "Group"
 			)
 			else
 			(
@@ -217,36 +311,142 @@ struct TransformLockClassManager_v
 
 				if (base_object_value != undefined) then
 				(
-					super_name = toLower ((superClassOf base_object_value) as string)
-
-					case super_name of
+					try
 					(
-						"shape":
-						(
-							class_key = #Shape
-						)
-						"geometryclass":
-						(
-							class_key = #Geometry
-						)
-						"helper":
-						(
-							class_key = #Helper
-						)
-						"camera":
-						(
-							class_key = #Camera
-						)
-						"light":
-						(
-							class_key = #Light
-						)
+						class_key = (classOf base_object_value) as string
+					)
+					catch
+					(
+						class_key = undefined
 					)
 				)
 			)
 		)
 
 		class_key -- return
+	),
+
+	/* Load real baseObject classes used by scene nodes.
+	This is the only primary scanner and uses objects directly.
+	*/
+	function loadSceneClasses =
+	(
+		found_keys = #()
+
+		for scene_node in objects do
+		(
+			try
+			(
+				class_key = getNodeClassKey scene_node
+
+				if (class_key != undefined and class_key != "" and findItem found_keys class_key == 0) then
+				(
+					append found_keys class_key
+				)
+			)
+			catch
+			(
+			)
+		)
+
+		sort found_keys
+		class_keys = found_keys
+		class_names = for class_key in class_keys collect class_key
+
+		class_names -- return
+	),
+
+	/* Get formatted class listbox items.
+	Ignored classes are prefixed but kept visible.
+	*/
+	function getClassListboxItems =
+	(
+		listbox_items = #()
+
+		for class_index = 1 to class_names.count do
+		(
+			prefix_text = if (isClassIndexIgnored class_index) then "[IGN] " else "[USE] "
+			append listbox_items (prefix_text + class_names[class_index])
+		)
+
+		listbox_items -- return
+	),
+
+	/* Populate class listbox from current dynamic class list.
+	Selection can be preserved when class names still exist.
+	*/
+	function populateClassListbox preserve_selection:true =
+	(
+		previous_names = #()
+		previous_selection = #{}
+
+		try
+		(
+			previous_selection = TransformLockClassManager_ui.lbx_classes.selection
+
+			for item_index = 1 to class_names.count do
+			(
+				if (previous_selection[item_index] == true) then
+				(
+					append previous_names class_names[item_index]
+				)
+			)
+		)
+		catch
+		(
+		)
+
+		try
+		(
+			TransformLockClassManager_ui.lbx_classes.items = getClassListboxItems()
+
+			if (preserve_selection == true) then
+			(
+				selected_flags = #{}
+
+				for previous_name in previous_names do
+				(
+					class_index = findItem class_names previous_name
+
+					if (class_index > 0) then
+					(
+						selected_flags[class_index] = true
+					)
+				)
+
+				TransformLockClassManager_ui.lbx_classes.selection = selected_flags
+			)
+			else
+			(
+				TransformLockClassManager_ui.lbx_classes.selection = #{}
+			)
+		)
+		catch
+		(
+		)
+
+		class_names.count -- return
+	),
+
+	/* Refresh scene classes, values and listbox.
+	Called on rollout open and after max file changes.
+	*/
+	function updateUiByScene apply_locks:true preserve_selection:true source_name:"Scene refresh" =
+	(
+		loadSceneClasses()
+		loadIgnoredValues()
+		loadValues()
+		populateClassListbox preserve_selection:preserve_selection
+
+		if (apply_locks == true) then
+		(
+			TransformLockClassManager.applyAllClassesToScene()
+		)
+
+		TransformLockClassManager.updateUi()
+		setStatus (source_name + " | Classes: " + (class_names.count as string) + " | Section: " + getSceneSectionName())
+
+		class_names.count -- return
 	),
 
 	/* Convert class values to transform lock bitarray.
@@ -292,7 +492,7 @@ struct TransformLockClassManager_v
 	),
 
 	/* Get effective class indices.
-	If listbox selection is empty, global mode uses all classes.
+	If listbox selection is empty, global mode uses all non-ignored classes.
 	*/
 	function getEffectiveClassIndices =
 	(
@@ -303,7 +503,17 @@ struct TransformLockClassManager_v
 			selected_indices = for class_index = 1 to class_keys.count collect class_index
 		)
 
-		selected_indices -- return
+		filtered_indices = #()
+
+		for class_index in selected_indices do
+		(
+			if ((isClassIndexIgnored class_index) == false) then
+			(
+				append filtered_indices class_index
+			)
+		)
+
+		filtered_indices -- return
 	),
 
 	/* Check if listbox is in global mode.
@@ -556,7 +766,7 @@ struct TransformLockClassManager_v
 			node_class_key = getNodeClassKey scene_node
 			class_index = findItem class_keys node_class_key
 
-			if (class_index > 0) then
+			if (class_index > 0 and ((isClassIndexIgnored class_index) == false)) then
 			(
 				flag_array = getFlagsFromClassIndex class_index
 
@@ -582,6 +792,11 @@ struct TransformLockClassManager_v
 	(
 		updated_count = 0
 
+		loadSceneClasses()
+		loadIgnoredValues()
+		loadValues()
+		populateClassListbox preserve_selection:true
+
 		if (callback_value != undefined) then
 		(
 			if (isKindOf callback_value Array) then
@@ -605,7 +820,7 @@ struct TransformLockClassManager_v
 
 		if (updated_count > 0) then
 		(
-			TransformLockClassManager.setStatus ("Auto locked new node: " + (updated_count as string) + " | Section: " + TransformLockClassManager.getSceneSectionName())
+			TransformLockClassManager.setStatus ("Auto locked new node: " + (updated_count as string) + " | Classes: " + (class_names.count as string))
 		)
 
 		updated_count -- return
@@ -632,11 +847,65 @@ struct TransformLockClassManager_v
 		(
 		)
 
+		try
+		(
+			callbacks.removeScripts id:scene_refresh_callback_id
+		)
+		catch
+		(
+		)
+
 		node_script = "try (if (TransformLockClassManager != undefined) then (TransformLockClassManager.applyLockToCallbackParam (callbacks.notificationParam()))) catch()"
 		selection_script = "try (if (TransformLockClassManager != undefined) then (TransformLockClassManager.updateListboxSelectionByCurrentSelection())) catch()"
+		refresh_script = "try (if (TransformLockClassManager != undefined) then (TransformLockClassManager.updateUiByScene apply_locks:true preserve_selection:false source_name:\"File scene refresh\")) catch()"
 
-		callbacks.addScript #nodeCreated node_script id:node_created_callback_id persistent:false
-		callbacks.addScript #selectionSetChanged selection_script id:selection_changed_callback_id persistent:false
+		try
+		(
+			callbacks.addScript #nodeCreated node_script id:node_created_callback_id persistent:false
+		)
+		catch
+		(
+		)
+
+		try
+		(
+			callbacks.addScript #selectionSetChanged selection_script id:selection_changed_callback_id persistent:false
+		)
+		catch
+		(
+		)
+
+		try
+		(
+			callbacks.addScript #filePostOpen refresh_script id:scene_refresh_callback_id persistent:false
+		)
+		catch
+		(
+		)
+
+		try
+		(
+			callbacks.addScript #systemPostNew refresh_script id:scene_refresh_callback_id persistent:false
+		)
+		catch
+		(
+		)
+
+		try
+		(
+			callbacks.addScript #systemPostReset refresh_script id:scene_refresh_callback_id persistent:false
+		)
+		catch
+		(
+		)
+
+		try
+		(
+			callbacks.addScript #postMerge refresh_script id:scene_refresh_callback_id persistent:false
+		)
+		catch
+		(
+		)
 
 		true -- return
 	),
@@ -662,11 +931,19 @@ struct TransformLockClassManager_v
 		(
 		)
 
+		try
+		(
+			callbacks.removeScripts id:scene_refresh_callback_id
+		)
+		catch
+		(
+		)
+
 		true -- return
 	),
 
 	/* Apply effective class settings to scene nodes.
-	Empty listbox selection means all classes.
+	Empty listbox selection means all non-ignored classes.
 	*/
 	function applyEffectiveClassesToScene =
 	(
@@ -706,7 +983,7 @@ struct TransformLockClassManager_v
 	),
 
 	/* Apply all stored class settings to scene nodes.
-	Used on rollout open.
+	Used on rollout open and scene reload.
 	*/
 	function applyAllClassesToScene =
 	(
@@ -717,7 +994,7 @@ struct TransformLockClassManager_v
 			node_class_key = getNodeClassKey scene_node
 			class_index = findItem class_keys node_class_key
 
-			if (class_index > 0) then
+			if (class_index > 0 and ((isClassIndexIgnored class_index) == false)) then
 			(
 				flag_array = getFlagsFromClassIndex class_index
 
@@ -869,6 +1146,48 @@ struct TransformLockClassManager_v
 		true -- return
 	),
 
+	/* Toggle ignored state for selected listbox classes.
+	Ignored classes remain visible but are skipped by actions.
+	*/
+	function toggleIgnoreForSelectedClasses =
+	(
+		selected_indices = getSelectedClassIndices()
+
+		if (selected_indices.count == 0) then
+		(
+			setStatus "Select class rows first."
+		)
+		else
+		(
+			ignored_count = 0
+			used_count = 0
+
+			for class_index in selected_indices do
+			(
+				class_key = class_keys[class_index]
+				ignored_index = findItem ignored_class_keys class_key
+
+				if (ignored_index > 0) then
+				(
+					deleteItem ignored_class_keys ignored_index
+					used_count += 1
+				)
+				else
+				(
+					append ignored_class_keys class_key
+					ignored_count += 1
+				)
+			)
+
+			saveIgnoredValues()
+			populateClassListbox preserve_selection:true
+			TransformLockClassManager.updateUi()
+			setStatus ("Ignore toggled | Ignored: " + (ignored_count as string) + " | Unignored: " + (used_count as string))
+		)
+
+		true -- return
+	),
+
 	/* Update listbox selection from current scene selection.
 	No selected objects means empty listbox selection and global mode.
 	*/
@@ -899,7 +1218,7 @@ struct TransformLockClassManager_v
 	),
 
 	/* Update all colored lock buttons from effective classes.
-	Empty listbox selection means global mode and uses all classes.
+	Empty listbox selection means global mode and uses all non-ignored classes.
 	*/
 	function updateUi =
 	(
@@ -929,7 +1248,7 @@ struct TransformLockClassManager_v
 
 		if (isGlobalMode()) then
 		(
-			setStatus ("Global mode: all listbox classes | Section: " + getSceneSectionName())
+			setStatus ("Global mode: all non-ignored classes | Classes: " + (class_names.count as string) + " | Section: " + getSceneSectionName())
 		)
 		else
 		(
@@ -959,7 +1278,7 @@ struct TransformLockClassManager_v
 	),
 
 	/* Toggle one transform axis from colored button.
-	Empty listbox selection means set all classes.
+	Empty listbox selection means set all non-ignored classes.
 	*/
 	function toggleAxisFromButton transform_index axis_index =
 	(
@@ -983,7 +1302,7 @@ struct TransformLockClassManager_v
 	),
 
 	/* Toggle whole transform row from colored All button.
-	Empty listbox selection means set all classes.
+	Empty listbox selection means set all non-ignored classes.
 	*/
 	function toggleAllFromButton transform_index =
 	(
@@ -1054,12 +1373,10 @@ struct TransformLockClassManager_v
 	),
 
 	/* Open manager rollout.
-	Loads stored values, applies them, and enables callbacks.
+	Loads scene classes, stored values, applies them, and enables callbacks.
 	*/
 	function openRollout =
 	(
-		loadValues()
-
 		try
 		(
 			destroyDialog TransformLockClassManager_ui
@@ -1068,12 +1385,11 @@ struct TransformLockClassManager_v
 		(
 		)
 
-		createDialog TransformLockClassManager_ui width:560 height:184 style:#(#style_titlebar, #style_sysmenu, #style_toolwindow)
+		createDialog TransformLockClassManager_ui width:560 height:216 style:#(#style_titlebar, #style_sysmenu, #style_toolwindow)
 
-		applyAllClassesToScene()
+		updateUiByScene apply_locks:true preserve_selection:false source_name:"Tool open"
 		registerCallbacks()
 		updateListboxSelectionByCurrentSelection()
-		TransformLockClassManager.updateUi()
 
 		true -- return
 	),
@@ -1084,9 +1400,10 @@ struct TransformLockClassManager_v
 	)
 )
 
-rollout TransformLockClassManager_ui "Transform Lock Class Manager" width:560 height:184
+rollout TransformLockClassManager_ui "Transform Lock Class Manager 0.17" width:560 height:216
 (
 	multiListBox lbx_classes "" pos:[8, 8] width:170 height:8 items:#()
+	button btn_ignore "Ignore / Unignore" pos:[8, 136] width:170 height:24 tooltip:"Toggle selected scene classes between used and ignored."
 
 	dotNetControl dn_pos_all "System.Windows.Forms.Button" pos:[205, 24] width:115 height:30
 	dotNetControl dn_pos_x "System.Windows.Forms.Button" pos:[340, 24] width:32 height:30
@@ -1106,18 +1423,22 @@ rollout TransformLockClassManager_ui "Transform Lock Class Manager" width:560 he
 	dotNetControl dn_btn_hide "System.Windows.Forms.Button" pos:[205, 134] width:115 height:28
 	dotNetControl dn_btn_freeze "System.Windows.Forms.Button" pos:[340, 134] width:132 height:28
 
-	label lb_status "" pos:[8, 164] width:540 height:16
+	label lb_status "" pos:[8, 194] width:540 height:16
 
 	on TransformLockClassManager_ui open do
 	(
-		lbx_classes.items = TransformLockClassManager.class_names
 		TransformLockClassManager.setupUiButtons()
-		TransformLockClassManager.updateListboxSelectionByCurrentSelection()
+		TransformLockClassManager.updateUiByScene apply_locks:false preserve_selection:false source_name:"Rollout open"
 	)
 
 	on lbx_classes selected item_index do
 	(
 		TransformLockClassManager.updateUi()
+	)
+
+	on btn_ignore pressed do
+	(
+		TransformLockClassManager.toggleIgnoreForSelectedClasses()
 	)
 
 	on dn_btn_hide MouseDown mouse_event do
@@ -1192,28 +1513,30 @@ rollout TransformLockClassManager_ui "Transform Lock Class Manager" width:560 he
 )
 
 
-/*
-TransformLockClassManager = TransformLockClassManager_v()
-TransformLockClassManager.openRollout()
-
-*/ 
-
 /* Test code.
 Run after script is loaded.
 */
 -- TransformLockClassManager.createTestScene()
+-- TransformLockClassManager.updateUiByScene apply_locks:false preserve_selection:false source_name:"Manual test refresh"
+-- TransformLockClassManager.class_names
+-- TransformLockClassManager_ui.lbx_classes.items
+-- for scene_node in objects collect #(scene_node.name, TransformLockClassManager.getNodeClassKey scene_node)
 
--- Select geometry and listbox should switch to Geometry.
--- select (for scene_node in objects where (isValidNode scene_node and superClassOf scene_node.baseObject == GeometryClass) collect scene_node)
+-- Select some objects and listbox should switch to their exact baseObject classes.
+-- select (for scene_node in objects where (isValidNode scene_node and TransformLockClassManager.getNodeClassKey scene_node == "Box") collect scene_node)
 -- TransformLockClassManager.updateListboxSelectionByCurrentSelection()
 
 -- Empty selection means global mode.
 -- clearSelection()
 -- TransformLockClassManager.updateListboxSelectionByCurrentSelection()
 
--- New objects should receive stored class transform locks.
+-- New objects should add their classes and receive stored class transform locks.
 -- teapot name:"TLCM_Callback_Test_Teapot"
+-- TransformLockClassManager.class_names
 -- getTransformLockFlags $TLCM_Callback_Test_Teapot
+
+-- Ignore button:
+-- Select class rows in listbox, then press Ignore / Unignore.
 
 -- Hide button:
 -- LMB = hide effective class nodes.

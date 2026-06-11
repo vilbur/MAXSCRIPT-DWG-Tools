@@ -136,4 +136,6 @@ function dwgToolsOpen =
 	true -- return
 )
 
+/*
 dwgToolsOpen()
+*/ 

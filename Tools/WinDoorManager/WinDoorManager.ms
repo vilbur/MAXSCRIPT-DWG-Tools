@@ -26,7 +26,7 @@ Rules:
 	Replacement AEC objects are never updated with update().
 */
 
-function winDoorManager =
+function WinDoorManager =
 (
 	global winDoorManager_rollout_ref
 
@@ -1489,7 +1489,6 @@ function testWinDoorManagerBottomZ =
 	test_master -- return
 )
 
-winDoorManager()
 
 /*
 Manual tests:
