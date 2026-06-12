@@ -1,13 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Komodo Project File - DO NOT EDIT -->
 <project id="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" kpf_version="5" name="MS   -   DWG-Tools.komodoproject">
+<livefolder id="1a7ad9c2-7b18-45f3-9eda-7b492e132a41" idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" name="Tools" url="Tools/">
+</livefolder>
 <livefolder id="48c1e82c-a175-4ce2-a8c7-0c1d63e8b0d3" idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" name="content" url="content/">
 </livefolder>
-<livefolder id="9557ec0e-e516-45aa-a12a-ea3bd1032e54" idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" name="trimSplineByVolume" url="Lib/trimSplineByVolume/">
-</livefolder>
-<livefolder id="c2210ffe-db5b-4c08-b329-f4f1dc83de19" idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" name="DwgMassImporter" url="Lib/DwgMassImporter/">
-</livefolder>
+<folder id="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" name="Tools">
+</folder>
 <livefolder id="e7f1b8d4-1ba4-453f-96b4-cf60911b7315" idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" name="Lib" url="Lib/">
+</livefolder>
+<livefolder id="1fe08e94-d787-4801-bfc2-1d4c52ef2922" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="TransformLockClassManager" url="Tools/TransformLockClassManager/">
+</livefolder>
+<livefolder id="2605d316-9492-4505-bc78-bf0c993cc8fd" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="DwgMassImporter" url="Tools/DwgMassImporter/">
+</livefolder>
+<livefolder id="7ab49ca5-56cb-4af3-a87d-e60e9f7ef4c9" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="SplineToObjConvertor" url="Tools/SplineToObjConvertor/">
+</livefolder>
+<livefolder id="82e4870b-f69e-47b2-8da6-2d75137e3b87" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="DwgLayerManager" url="Tools/DwgLayerManager/">
+</livefolder>
+<livefolder id="97b7bd2b-31fa-4acd-8a3c-5ddf68f5afd1" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="WinDoorManager" url="Tools/WinDoorManager/">
+</livefolder>
+<livefolder id="aaea07de-c8d7-4472-80f6-375185fa397f" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="trimSplineByVolume" url="Tools/trimSplineByVolume/">
+</livefolder>
+<livefolder id="b7b97647-4a77-4ea1-9a2c-d48ce0d6fdb4" idref="9b27157c-92de-4e84-bd8a-81ad6b7ce36f" name="EdgeAlignTool" url="Tools/EdgeAlignTool/">
 </livefolder>
 <preference-set idref="8ead1493-bc9b-4387-baf7-d1ee8ddeb0a3" id="project" preftype="project">
   <long id="prefs_version">1</long>

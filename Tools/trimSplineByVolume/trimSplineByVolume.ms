@@ -1,6 +1,6 @@
 --clearListener(); print("Cleared in: "+getSourceFileName())
 
-/* version 4.1 - Refactored Modules */
+/* version 5.6 - Refactored Modules */
 
 global TrimApp_Core
 global TrimApp_Ops
@@ -35,12 +35,21 @@ function trimGetNextDummy cur_name =
     return cur_name + "_01"
 )
 
+/* Get first free generated volume name.
+   Skips already existing letter or number suffix names. */
 function trimGetUniqueDummy s_name =
 (
     local c_name = trimGetNextDummy s_name
     local m_iters = 1000, c_iter = 0
-    while ((isValidNode (getNodeByName c_name)) and c_iter < m_iters) do ( c_name = trimGetNextDummy c_name; c_iter += 1 )
-    return c_name
+
+    while ((isValidNode (getNodeByName c_name)) and c_iter < m_iters) do
+    (
+        c_name = trimGetNextDummy c_name
+        c_iter += 1
+    )
+
+    c_name
+    -- return
 )
 
 function trimHandleCloned =
@@ -84,7 +93,7 @@ function openCanvasTrimSplinesTool =
 	TrimApp_Ops = TrimOperations core:TrimApp_Core
 	TrimApp_UI = TrimUI core:TrimApp_Core ops:TrimApp_Ops
 	
-	TrimApp_UI.showUI "v4.1"
+	TrimApp_UI.showUI "v5.6"
 	
 	
 	callbacks.removeScripts id:#trimSplineVolumeClone
