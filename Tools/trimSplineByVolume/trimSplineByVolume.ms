@@ -1,6 +1,6 @@
 --clearListener(); print("Cleared in: "+getSourceFileName())
 
-/* version 5.6 - Refactored Modules */
+/* version 6.0 - Refactored Modules */
 
 global TrimApp_Core
 global TrimApp_Ops
@@ -93,7 +93,7 @@ function openCanvasTrimSplinesTool =
 	TrimApp_Ops = TrimOperations core:TrimApp_Core
 	TrimApp_UI = TrimUI core:TrimApp_Core ops:TrimApp_Ops
 	
-	TrimApp_UI.showUI "v5.6"
+	TrimApp_UI.showUI "v6.0"
 	
 	
 	callbacks.removeScripts id:#trimSplineVolumeClone

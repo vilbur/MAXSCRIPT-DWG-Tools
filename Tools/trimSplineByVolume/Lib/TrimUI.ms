@@ -6,15 +6,20 @@ struct TrimUI
     function getSceneVolumes =
     (
         local v_vols = #()
-        local t_sel = getNodeByName "TRIM_SELECTION"
-        if (isValidNode t_sel) then appendIfUnique v_vols t_sel
-        for n in selection where (isValidNode n and core.isVolumeDummy n) do appendIfUnique v_vols n
+
+        for n in selection where (isValidNode n and core.isVolumeDummy n and ops.isVolumeDummyInVisibleLayer n) do appendIfUnique v_vols n
+
         for i = 0 to LayerManager.count - 1 do
         (
             local lay = LayerManager.getLayer i
-            local l_nodes = #(); lay.nodes &l_nodes
-            for n in l_nodes where (isValidNode n and core.isVolumeDummy n) do appendIfUnique v_vols n
+
+            if (ops.isLayerChainVisible lay) then
+            (
+                local l_nodes = #(); lay.nodes &l_nodes
+                for n in l_nodes where (isValidNode n and core.isVolumeDummy n and ops.isVolumeDummyInVisibleLayer n) do appendIfUnique v_vols n
+            )
         )
+
         v_vols
     ),
 
@@ -43,12 +48,14 @@ struct TrimUI
                 button btn_g "Generate Volumes" width:190 height:30 tooltip:"Left-Click: Single Volume in Current/Selected Layer\nRight-Click: Auto-gen Volumes for all Visible Layers"
                 button btn_r "TRIM SPLINES (SINGLE)" width:190 height:30 tooltip:"Trim all valid splines using the active volume"
                 button btn_m "MASS MODE (ALL LAYERS)" width:190 height:30 tooltip:"Iterate layers, isolating volumes for processing. Deletes original trees if multiple dummies exist."
+                button btn_s "SPLIT GROUP BY PLANE" width:190 height:30 tooltip:"Select one group head and one slice plane node. Local Z axis of slice plane is used as plane normal."
             )
             group "Settings"
             (
                 spinner spn_t "Tolerance: " range:[0.00001, 1000.0, 0.001] scale:0.00001 type:#float align:#center tooltip:"Threshold for Knot bounding & Auto-Weld"
                 checkbox chk_d "Delete Empty Splines" checked:true align:#center tooltip:"Delete completely empty remaining splines"
                 checkbox chk_f "Ignore Frozen Objects" checked:true align:#center tooltip:"Skip processing frozen objects"
+                checkbox chk_g "Group Trimmed Result" checked:false align:#center tooltip:"Create one group from unwrapped trimmed splines. Group uses the volume layer name and layer."
             )
             
             function updateVolumeLabel =
@@ -74,7 +81,7 @@ struct TrimUI
             
             function saveSet =
             (
-                setINISetting ini_f "Set" "Tol" (spn_t.value as string); setINISetting ini_f "Set" "Del" (chk_d.checked as string); setINISetting ini_f "Set" "Frz" (chk_f.checked as string)
+                setINISetting ini_f "Set" "Tol" (spn_t.value as string); setINISetting ini_f "Set" "Del" (chk_d.checked as string); setINISetting ini_f "Set" "Frz" (chk_f.checked as string); setINISetting ini_f "Set" "Grp" (chk_g.checked as string)
                 local p = getDialogPos ::ro_trimSplineByVolume
                 setINISetting ini_f "Set" "PX" (p.x as string); setINISetting ini_f "Set" "PY" (p.y as string)
             )
@@ -84,6 +91,7 @@ struct TrimUI
                 local t = getINISetting ini_f "Set" "Tol"; if (t != "") then ( spn_t.value = amax 0.00001 (t as float); l_tol = spn_t.value )
                 local d = getINISetting ini_f "Set" "Del"; if (d != "") then chk_d.checked = (d == "true")
                 local f = getINISetting ini_f "Set" "Frz"; if (f != "") then chk_f.checked = (f == "true")
+                local g = getINISetting ini_f "Set" "Grp"; if (g != "") then chk_g.checked = (g == "true")
             )
             
             on tmr_v tick do updateVolumeLabel()
@@ -117,7 +125,7 @@ struct TrimUI
             on btn_r pressed do
             (
                 saveSet(); tmr_v.active = false
-                if (isValidNode c_vol) then ::TrimGlobalApp[1].run c_vol quiet:false tol_val:spn_t.value del_empty:chk_d.checked ignore_frz:chk_f.checked
+                if (isValidNode c_vol) then ::TrimGlobalApp[2].runTrimWithVolume c_vol quiet:false tol_val:spn_t.value del_empty:chk_d.checked ignore_frz:chk_f.checked group_result:chk_g.checked
                 else messageBox "Select a valid volume first." title:"Trim Splines"
                 tmr_v.active = true; updateVolumeLabel()
             )
@@ -125,7 +133,14 @@ struct TrimUI
             on btn_m pressed do
             (
                 saveSet(); tmr_v.active = false
-                ::TrimGlobalApp[2].runMassMode quiet:false tol_val:spn_t.value del_empty:chk_d.checked ignore_frz:chk_f.checked
+                ::TrimGlobalApp[2].runMassMode quiet:false tol_val:spn_t.value del_empty:chk_d.checked ignore_frz:chk_f.checked group_result:chk_g.checked
+                tmr_v.active = true; updateVolumeLabel()
+            )
+
+            on btn_s pressed do
+            (
+                saveSet(); tmr_v.active = false
+                ::TrimGlobalApp[2].splitSelectedGroupBySlicePlane quiet:false tol_val:spn_t.value
                 tmr_v.active = true; updateVolumeLabel()
             )
         )

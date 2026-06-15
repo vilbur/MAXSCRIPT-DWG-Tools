@@ -1,5 +1,42 @@
+/*
+Trim Splines By Volume - Core trimming rules
+Version: 6.0
+
+These rules are the source of truth for trimShapeByVolume().
+Do not change trimming behavior without updating this header and tests.
+
+RULE 01 - 2D trim only.
+    Volume bounds are tested only in XY. Z is infinite and must never delete or keep anything by height.
+
+RULE 02 - Whole-inside spline is protected.
+    If all knots of one spline are inside the XY volume, that spline is not modified.
+
+RULE 03 - Whole-outside spline is deleted.
+    If no knot of one spline is inside the XY volume, that spline is deleted.
+
+RULE 04 - Mixed spline deletes outside knots only when safe.
+    If some knots are inside and some are outside, outside knots are deleted only when the remaining
+    inside knots can still form a valid spline: open spline needs 2 knots, closed spline needs 3 knots.
+
+RULE 05 - Unsafe mixed spline is kept unchanged.
+    If deleting outside knots would leave an invalid spline, the spline is not modified.
+    This prevents one-knot splines, bad updateShape calls, and accidental deletion of inside data.
+
+RULE 06 - Empty spline containers can be removed.
+    Truly empty spline sub-objects are removed. If the shape has no splines after trimming, the node can be deleted.
+
+RULE 07 - Keep v4.1 knot test behavior.
+    Knot positions are tested the same way as the last known correct v4.1 core.
+    Do not replace this with a different transform-space test unless every rule test is updated and passes.
+*/
+
 struct TrimCore
 (
+    trim_rule_keep_whole_inside = #keepWholeInside,
+    trim_rule_delete_whole_outside = #deleteWholeOutside,
+    trim_rule_delete_outside_knots = #deleteOutsideKnots,
+    trim_rule_keep_invalid_mixed = #keepInvalidMixed,
+
     function isNodeUnhidden node_val = (isValidNode node_val and node_val.isHidden == false),
     function isNodeLayerVisible node_val = (isValidNode node_val and (node_val.layer == undefined or node_val.layer.on)),
     
@@ -14,7 +51,7 @@ struct TrimCore
 
     function isVolumeDummy node_val =
     (
-        if (isValidNode node_val and node_val.name != "TRIM_CANVAS" and node_val.name != "TRIM_SELECTION") then
+        if (isValidNode node_val and node_val.name != "TRIM_CANVAS") then
         (
             if (classOf node_val == VolumeHelper) then return true
         )
@@ -155,6 +192,73 @@ struct TrimCore
         )
     ),
 
+    /* Get knot point used by trim rules.
+       This intentionally keeps the v4.1 trim test behavior. */
+    function getTrimKnotTestPoint shape_node spline_index knot_index =
+    (
+        local knot_point = [0.0, 0.0, 0.0]
+
+        try
+        (
+            knot_point = getKnotPoint shape_node spline_index knot_index
+        )
+        catch
+        (
+            knot_point = [0.0, 0.0, 0.0]
+        )
+
+        knot_point
+        -- return
+    ),
+
+    /* Resolve the trimming rule for one spline.
+       trimShapeByVolume() executes only this returned rule. */
+    function getSplineTrimRuleData shape_node spline_index b_data tol_val:0.001 =
+    (
+        local knot_count = numKnots shape_node spline_index
+        local inside_states = #()
+        local inside_count = 0
+        local min_safe_knots = 2
+        local rule_name = trim_rule_keep_invalid_mixed
+
+        if (knot_count < 1) then
+        (
+            rule_name = trim_rule_delete_whole_outside
+        )
+        else
+        (
+            inside_states = for knot_index = 1 to knot_count collect (isWorldPointInsideVolume (getTrimKnotTestPoint shape_node spline_index knot_index) b_data tol_val:tol_val)
+
+            for state_item in inside_states where state_item do inside_count += 1
+
+            if (inside_count == knot_count) then
+            (
+                rule_name = trim_rule_keep_whole_inside
+            )
+            else if (inside_count == 0) then
+            (
+                rule_name = trim_rule_delete_whole_outside
+            )
+            else
+            (
+                local spline_closed = isClosed shape_node spline_index
+                min_safe_knots = if spline_closed then 3 else 2
+
+                if (inside_count >= min_safe_knots) then
+                (
+                    rule_name = trim_rule_delete_outside_knots
+                )
+                else
+                (
+                    rule_name = trim_rule_keep_invalid_mixed
+                )
+            )
+        )
+
+        #(rule_name, inside_states, inside_count, knot_count, min_safe_knots)
+        -- return
+    ),
+
     /* Trim one shape by 2D volume bounds.
        Whole-inside splines are never touched. */
     function trimShapeByVolume shape_node b_data tol_val:0.001 delete_empty:true =
@@ -164,40 +268,35 @@ struct TrimCore
 
         if (isValidNode shape_node and isSplineShapeNode shape_node and b_data != undefined) then
         (
-            for sp_idx = (numSplines shape_node) to 1 by -1 do
+            for spline_index = (numSplines shape_node) to 1 by -1 do
             (
-                local k_count = numKnots shape_node sp_idx
+                local rule_data = getSplineTrimRuleData shape_node spline_index b_data tol_val:tol_val
+                local rule_name = rule_data[1]
+                local inside_states = rule_data[2]
+                local knot_count = rule_data[4]
 
-                if (k_count > 0) then
+                if (rule_name == trim_rule_keep_whole_inside) then
                 (
-                    local inside_states = for k = 1 to k_count collect (isWorldPointInsideVolume (getKnotPoint shape_node sp_idx k) b_data tol_val:tol_val)
-                    local inside_count = 0
-
-                    for state_item in inside_states where state_item do inside_count += 1
-
-                    if (inside_count == k_count) then
+                    /* RULE 02: protected whole-inside spline. */
+                )
+                else if (rule_name == trim_rule_delete_whole_outside) then
+                (
+                    /* RULE 03: whole-outside or empty spline. */
+                    deleteSpline shape_node spline_index
+                    del_sp += 1
+                )
+                else if (rule_name == trim_rule_delete_outside_knots) then
+                (
+                    /* RULE 04: safe mixed spline. */
+                    for knot_index = knot_count to 1 by -1 where (not inside_states[knot_index]) do
                     (
-                        /* Whole spline is inside XY volume. Do nothing. */
+                        deleteKnot shape_node spline_index knot_index
+                        del_k += 1
                     )
-                    else if (inside_count == 0) then
-                    (
-                        deleteSpline shape_node sp_idx
-                        del_sp += 1
-                    )
-                    else
-                    (
-                        local is_closed = isClosed shape_node sp_idx
-                        local min_safe_knots = if is_closed then 3 else 2
-
-                        if (inside_count >= min_safe_knots) then
-                        (
-                            for k_idx = k_count to 1 by -1 where (not inside_states[k_idx]) do
-                            (
-                                deleteKnot shape_node sp_idx k_idx
-                                del_k += 1
-                            )
-                        )
-                    )
+                )
+                else
+                (
+                    /* RULE 05: unsafe mixed spline is kept unchanged. */
                 )
             )
 
@@ -218,6 +317,7 @@ struct TrimCore
             if (delete_empty and isValidNode shape_node and ((numSplines shape_node) < 1)) then delete shape_node
         )
         #(del_k, del_sp)
+        -- return
     ),
 
     function run vol_node quiet:false tol_val:0.001 del_empty:true ignore_frz:true =
